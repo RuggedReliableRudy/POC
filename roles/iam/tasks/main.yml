@@ -1,0 +1,25 @@
+- name: Create Glue IAM role
+  amazon.aws.iam_role:
+    name: "{{ glue_role_name }}"
+    assume_role_policy_document: "{{ lookup('file', 'policy.json') }}"
+    managed_policies:
+      - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+      - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+- name: Create Glue IAM role
+  amazon.aws.iam_role:
+    name: "{{ glue_role_name }}"
+    assume_role_policy_document: "{{ lookup('file', 'policy.json') }}"
+    managed_policies:
+      - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      - arn:aws:iam::aws:policy/AmazonS3FullAccess
+  register: glue_role
+
+- name: Create Glue inline policy
+  amazon.aws.iam_policy:
+    iam_type: role
+    iam_name: "glue-etl-role"
+    policy_name: glue-inline-policy
+    policy_json: "{{ lookup('file', 'glue-inline-policy.json') }}"
+  register: glue_policy

@@ -1,0 +1,83 @@
+name: Deploy AWS Infra with Ansible (OIDC + Secrets)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write   # REQUIRED for AWS OIDC
+  contents: read
+
+jobs:
+  ansible-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-south-1
+
+    steps:
+      # --------------------------------------------------
+      # Checkout code
+      # --------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # Assume AWS IAM Role via OIDC (NO secrets)
+      # --------------------------------------------------
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/github-ansible-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --------------------------------------------------
+      # (Optional but recommended) Verify identity
+      # --------------------------------------------------
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      # --------------------------------------------------
+      # Setup Python
+      # --------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # --------------------------------------------------
+      # Install Ansible + AWS dependencies
+      # --------------------------------------------------
+      - name: Install Ansible and dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible boto3 botocore amazon.aws
+          ansible-galaxy collection install amazon.aws
+
+      # --------------------------------------------------
+      # Ansible syntax check
+      # --------------------------------------------------
+      - name: Ansible syntax check
+        run: |
+          ansible-playbook ansible/site.yml --syntax-check
+
+      # --------------------------------------------------
+      # Dry-run on Pull Requests
+      # --------------------------------------------------
+      - name: Ansible dry-run (PR only)
+        if: github.event_name == 'pull_request'
+        run: |
+          ansible-playbook ansible/site.yml \
+            -i ansible/inventories/prod \
+            --check --diff
+
+      # --------------------------------------------------
+      # Deploy on merge to main
+      # --------------------------------------------------
+      - name: Ansible deploy (main branch)
+        if: github.event_name == 'push'
+        run: |
+          ansible-playbook ansible/site.yml \
+            -i ansible/inventories/prod

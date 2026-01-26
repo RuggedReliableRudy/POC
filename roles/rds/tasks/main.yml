@@ -1,0 +1,30 @@
+- name: GlueRDSSubnetGroup
+  amazon.aws.rds_subnet_group:
+    state: present
+    name: rdssubnetgroup
+    description: GlueRDSSubnetGroup
+    subnets:
+      - "{{ gluerdssubnetgroup1.subnet.id }}"
+      - "{{ gluerdssubnetgroup2.subnet.id }}"
+      - "{{ publicsubnet.subnet.id }}"
+    tags:
+      tag1: Tag1
+      tag2: Tag2
+  register: rdssubnetgroup
+
+- name: Create RDS PostgreSQL
+  amazon.aws.rds_instance:
+    db_instance_identifier: glue-postgres
+    engine: postgres
+    engine_version: "15"
+    db_name: "{{ db_name }}"
+    master_username: "{{ db_user }}"
+    master_user_password: "{{ db_password }}"
+    instance_type: "{{ db_instance_class }}"
+    allocated_storage: 20
+    db_subnet_group_name: "{{ rdssubnetgroup.subnet_group.name }}"
+    vpc_security_group_ids:
+      - "{{ rds_sg.group_id }}"
+    publicly_accessible: false
+    state: present
+  register: rds
