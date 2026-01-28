@@ -2,7 +2,7 @@
   command: >
     aws secretsmanager get-secret-value
     --secret-id prod/glue-rds-secret
-    --region us-east-1
+    --region us-Gov-west-1
   register: secret_raw
   changed_when: false
 
