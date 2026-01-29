@@ -1,7 +1,7 @@
 - name: Fetch DB secret from AWS Secrets Manager (CLI fallback)
   command: >
     aws secretsmanager get-secret-value
-    --secret-id prod/glue-rds-secret
+    --secret-id accumulator
     --region us-Gov-west-1
   register: secret_raw
   changed_when: false
