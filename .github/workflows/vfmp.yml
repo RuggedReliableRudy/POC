@@ -30,7 +30,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::193157015569:role/aws-github
+          role-to-assume: arn:aws-us-gov:iam::018743596699:role/project/project-accumulator-github-actions-iam-role
           aws-region: us-Gov-West-1
 
       # --------------------------------------------------
