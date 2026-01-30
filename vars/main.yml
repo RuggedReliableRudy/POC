@@ -3,7 +3,7 @@ region: "us-gov-west-1"
 
 # --- Network Configuration ---
 # The ID of your pre-existing VPC
-target_vpc_id: "vpc-0faf5f1fb582oaa2"
+target_vpc_id: "vpc-0faf5f1fb582102a6"
 vpc_cidr: "10.0.0.0/16"
 
 # Subnets
