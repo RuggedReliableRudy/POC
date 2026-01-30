@@ -1,25 +1,30 @@
-- name: Create VPC
-  amazon.aws.ec2_vpc_net:
-    name: "etl-vpc"
-    cidr_block: "{{ vpc_cidr }}"
-    region: "{{ region }}"
-    state: present
-  register: vpc
+vars:
+  # Your existing VPC ID
+  target_vpc_id: "vpc-0faf5f1fb582102a6"
+  region: "us-gov-west-1"
+  
+  # IMPORTANT: Your VPC is a /27. To fit two subnets inside it, 
+  # they must be smaller (e.g., /28).
+  # Please replace the IPs below with valid ranges inside your VPC.
+  private_subnet_cidr_1: "10.247.234.192/28" 
+  private_subnet_cidr_2: "10.247.234.192/28"
 
-- name: Create private subnet1
-  amazon.aws.ec2_vpc_subnet:
-    vpc_id: "{{ vpc.vpc.id }}"
-    cidr: "{{ private_subnet_cidr_1 }}"
-    region: "{{ region }}"
-    az: "us-Gov-west-1a"
-    state: present
-  register: gluerdssubnetgroup1
+tasks:
+  - name: Create private subnet1
+    amazon.aws.ec2_vpc_subnet:
+      vpc_id: "{{ target_vpc_id }}"   # Updated to use existing ID
+      cidr: "{{ private_subnet_cidr_1 }}"
+      region: "{{ region }}"
+      az: "us-gov-west-1a"            # Ensure case matches your region
+      state: present
+      # MapPublicIpOnLaunch: no       # Good practice for private subnets
+    register: gluerdssubnetgroup1
 
-- name: Create private subnet2
-  amazon.aws.ec2_vpc_subnet:
-    vpc_id: "{{ vpc.vpc.id }}"
-    cidr: "{{ private_subnet_cidr_2 }}"
-    region: "{{ region }}"
-    az: "us-Gov-west-1b"
-    state: present
-  register: gluerdssubnetgroup2
+  - name: Create private subnet2
+    amazon.aws.ec2_vpc_subnet:
+      vpc_id: "{{ target_vpc_id }}"   # Updated to use existing ID
+      cidr: "{{ private_subnet_cidr_2 }}"
+      region: "{{ region }}"
+      az: "us-gov-west-1b"
+      state: present
+    register: gluerdssubnetgroup2
