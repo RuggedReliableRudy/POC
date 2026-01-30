@@ -1,16 +1,23 @@
-region: us-Gov-west-1
+# --- AWS Configuration ---
+region: "us-gov-west-1"
 
-private_subnet_cidr_1: "10.0.1.0/24"
-public_subnet_cidr: "10.0.3.0/24"
-private_subnet_cidr_2: "10.0.2.0/24"
+# --- Network Configuration ---
+# The ID of your pre-existing VPC
+target_vpc_id: "vpc-0faf5f1fb582oaa2"
 vpc_cidr: "10.0.0.0/16"
 
-s3_bucket: aws-glue-testing-macon-test
+# Subnets
+private_subnet_cidr_1: "10.0.1.0/24"
+private_subnet_cidr_2: "10.0.2.0/24"
+public_subnet_cidr: "10.0.3.0/24"
+
+# --- RDS & Database ---
+db_instance_class: "db.t3.medium"
 db_port: 5432
-db_instance_class: db.t3.medium
+secret_name: "accumulator"
 
-secret_name: prod/glue-rds-secret
-
-glue_role_name: glue-etl-role
-glue_job_name: csv-to-rds-job
-glue_connection_name: postgres-connection
+# --- Glue Configuration ---
+glue_job_name: "csv-to-rds-job"
+glue_role_name: "glue-etl-role"
+glue_connection_name: "postgres-connection"
+s3_bucket: "aws-glue-testing-macon-test"
