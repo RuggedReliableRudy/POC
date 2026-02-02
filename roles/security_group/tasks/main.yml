@@ -1,7 +1,7 @@
 - name: Create Glue security group
   amazon.aws.ec2_security_group:
     name: glue-sg
-    vpc_id: "{{ vpc.vpc.id }}"
+    vpc_id: "{{ vpc_id }}"
     description: Glue access
     region: "{{ region }}"
   register: glue_sg
@@ -9,7 +9,7 @@
 - name: Create RDS security group
   amazon.aws.ec2_security_group:
     name: rds-sg
-    vpc_id: "{{ vpc.vpc.id }}"
+    vpc_id: "{{ vpc_id }}"
     description: RDS access
     region: "{{ region }}"
     rules:
