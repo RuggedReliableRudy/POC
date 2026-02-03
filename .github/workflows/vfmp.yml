@@ -1,10 +1,10 @@
 name: Deploy AWS Infra with Ansible (OIDC + Secrets)
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+#on:
+  #push:
+    #branches: [ "main" ]
+  #pull_request:
+    #branches: [ "main" ]
   # 1. Added this to enable the "Run workflow" button
   workflow_dispatch:
 
