@@ -1,6 +1,6 @@
 name: Deploy AWS Infra with Ansible (OIDC + Secrets)
 
-#on:
+on:
   #push:
     #branches: [ "main" ]
   #pull_request:
