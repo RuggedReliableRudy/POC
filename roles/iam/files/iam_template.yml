@@ -31,7 +31,7 @@ Resources:
             # Restrict this to your specific secret for better security
             Resource: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:project-*
 
-  rRole:
+rRole:
     Type: AWS::IAM::Role
     Properties:
       Path: /project/
@@ -47,9 +47,13 @@ Resources:
       ManagedPolicyArns:
         - !Ref rPolicy
         - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSGlueServiceRole
-
-Outputs:
-  RoleArn:
-    Value: !GetAtt rRole.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-RoleArn"
+      # This replaces your glue-inline-policy.json
+      Policies:
+        - PolicyName: glue-inline-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: "iam:PassRole"
+                # Scoped to roles within your project path for better security
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/project/*"
