@@ -2,10 +2,18 @@
   gather_facts: false
   vars_files:
     - vars/main.yml
+  
+  # Global vars to ensure all roles follow the mandatory guardrails
+  vars:
+    boundary_arn: "arn:aws:iam::{{ lookup('aws_account_id') }}:policy/vaec/project-admin"
+    iam_path: "/project/"
+
   roles:
     - vpc
     - security_group
     - s3
-    - iam
     - rds
+    # The IAM role will now deploy the CloudFormation template 
+    - iam
+    # The Glue role can now reference the IAM role created by CloudFormation
     - glue
