@@ -3,9 +3,14 @@
     stack_name: "project-accumulator-iam-stack"
     state: present
     region: "{{ aws_region }}"
-    template: "roles/iam/files/iam_template.yml"
+    template: "iam_template.yml"
     capabilities:
       - CAPABILITY_NAMED_IAM
+  register: iam_stack_results
+
+- name: Set Role ARN for Glue
+  set_fact:
+    glue_role_arn: "{{ iam_stack_results.stack_outputs.RoleArn }}"
       
 - name: Create Glue IAM role
   amazon.aws.iam_role:
