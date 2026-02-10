@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Project admin role using IAM boundary
+
+Resources:
+  rPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Project Administrator created S3 Policy
+      Path: /project/
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: S3LimitedRead
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetObject*
+            Resource: 
+              - !Sub arn:${AWS::Partition}:s3:::sourcebucket
+              - !Sub arn:${AWS::Partition}:s3:::sourcebucket/myfolder*
+          - Sid: S3LimitedWrite
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetObject*
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource: 
+              - !Sub arn:${AWS::Partition}:s3:::destbucket
+              - !Sub arn:${AWS::Partition}:s3:::dest/myfolder*
+
+  rRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /project/
+      # Mandatory Boundary for your environment
+      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: !Sub glue.${AWS::URLSuffix}
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref rPolicy
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSGlueServiceRole
+
+Outputs:
+  RoleArn:
+    Description: The ARN of the created Glue Role
+    Value: !GetAtt rRole.Arn
