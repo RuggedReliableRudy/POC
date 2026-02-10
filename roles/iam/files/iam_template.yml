@@ -1,39 +1,40 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Project admin role using IAM boundary
+Description: Project admin role with S3 and Secrets Manager access
 
 Resources:
   rPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      Description: Project Administrator created S3 Policy
+      Description: Glue Job access to S3 and RDS Secrets
       Path: /project/
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          - Sid: S3LimitedRead
+          - Sid: S3Access
             Effect: Allow
             Action:
               - s3:ListBucket
-              - s3:GetObject*
-            Resource: 
-              - !Sub arn:${AWS::Partition}:s3:::sourcebucket
-              - !Sub arn:${AWS::Partition}:s3:::sourcebucket/myfolder*
-          - Sid: S3LimitedWrite
-            Effect: Allow
-            Action:
-              - s3:ListBucket
-              - s3:GetObject*
+              - s3:GetObject
               - s3:PutObject
               - s3:DeleteObject
             Resource: 
+              - !Sub arn:${AWS::Partition}:s3:::sourcebucket
+              - !Sub arn:${AWS::Partition}:s3:::sourcebucket/*
               - !Sub arn:${AWS::Partition}:s3:::destbucket
-              - !Sub arn:${AWS::Partition}:s3:::dest/myfolder*
+              - !Sub arn:${AWS::Partition}:s3:::destbucket/*
+
+          - Sid: GetRDSSecret
+            Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            # Restrict this to your specific secret for better security
+            Resource: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:project-*
 
   rRole:
     Type: AWS::IAM::Role
     Properties:
       Path: /project/
-      # Mandatory Boundary for your environment
       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -49,5 +50,6 @@ Resources:
 
 Outputs:
   RoleArn:
-    Description: The ARN of the created Glue Role
     Value: !GetAtt rRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-RoleArn"
