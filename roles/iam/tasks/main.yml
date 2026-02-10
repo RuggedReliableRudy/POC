@@ -1,3 +1,12 @@
+- name: Deploy IAM Role via CloudFormation
+  amazon.aws.cloudformation:
+    stack_name: "project-accumulator-iam-stack"
+    state: present
+    region: "{{ aws_region }}"
+    template: "roles/iam/files/iam_template.yml"
+    capabilities:
+      - CAPABILITY_NAMED_IAM
+      
 - name: Create Glue IAM role
   amazon.aws.iam_role:
     name: "{{ glue_role_name }}"
