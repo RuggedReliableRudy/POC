@@ -1,0 +1,68 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Example role, policy and instance profile for project admin using IAM boundary
+# MUST HAVE for mult-region - Stack name starts with "project-"
+
+Resources:
+  rPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      # MUST HAVE - Policy name begins with "project-"
+      # MUST HAVE for mult-region - Stack name starts with "project-"
+      # Auto-assigned name = <stack-name>-<resourcename>-<random>
+      # Example Auto assigned name = project-s3-role-example-rPolicy-1ST3R7IYC9JJ5
+      Description: Project Administrator created S3 Policy
+      # MUST HAVE - Policy document Path: /project/
+      Path: /project/
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          # - Sid: S3ListAllBuckets
+            # Effect: Allow
+            # Action:
+            # - s3:ListAllMyBuckets
+            # Resource: "*"
+          - Sid: S3LimitedRead
+            Effect: Allow
+            Action:
+            - s3:ListBucket
+            - s3:GetObject*
+            Resource: 
+             - !Sub arn:${AWS::Partition}:s3:::sourcebucket
+             - !Sub arn:${AWS::Partition}:s3:::sourcebucket/myfolder*
+
+          - Sid: S3LimitedWrite
+            Effect: Allow
+            Action:
+            - s3:ListBucket
+            - s3:GetObject*
+            - s3:PutObject
+            - s3:DeleteObject
+            Resource: 
+             - !Sub arn:${AWS::Partition}:s3:::destbucket
+             - !Sub arn:${AWS::Partition}:s3:::dest/myfolder*
+
+
+  rRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # MUST HAVE - IAM role name begins with "project-"
+      # MUST HAVE for mult-region - Stack name starts with "project-"
+      # Auto-assigned name = <stack-name>-<resourcename>-<random>
+      # Example Auto assigned name = project-s3-role-example-rRole-1ST3R7IYC9JJ5
+      # MUST HAVE - Role's Path: /project/
+      Path: /project/
+      # MUST HAVE - PermissionsBoundary set exactly as shown below, otherwise role creation will fail
+      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: !Sub glue.${AWS::URLSuffix}
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref rPolicy
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSGlueServiceRole
+
