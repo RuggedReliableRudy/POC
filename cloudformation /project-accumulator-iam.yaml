@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Project Glue IAM Role with S3 Access
+
+Resources:
+  rPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Project Administrator created S3 Policy
+      Path: /project/
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: S3LimitedReadWriteAccess
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetObject*
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::project-accumulator-files
+              - !Sub arn:${AWS::Partition}:s3:::project-accumulator-files/*
+
+  rRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /project/
+      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref rPolicy
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      RoleName: project-accumulator-glue-etl-role
+
+Outputs:
+  GlueRoleArn:
+    Value: !GetAtt rRole.Arn
