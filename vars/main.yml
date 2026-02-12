@@ -18,6 +18,10 @@ secret_name: "accumulator"
 
 # --- Glue Configuration ---
 glue_job_name: "csv-to-rds-job"
-glue_role_name: "glue-etl-role"
+glue_role_name: "project-accumulator-glue-etl-role"
 glue_connection_name: "postgres-connection"
 s3_bucket: "aws-glue-docmp-test"
+
+ 
+boundary_policy_name: vaec/project-admin
+custom_policy_name: project-accumulator-glue-s3-policy
