@@ -1,13 +1,3 @@
-# 1. Fetch the ARN of the role created by your CloudFormation stack
-- name: Get IAM Role ARN from CloudFormation
-  amazon.aws.cloudformation_info:
-    stack_name: "project-accumulator-iam-stack" # Must match the stack name in your iam role/playbook
-  register: iam_stack
-
-- name: Set Glue Role ARN fact
-  set_fact:
-    glue_role_arn: "{{ iam_stack.stack_resources | json_query(\"[?LogicalResourceId=='rRole'].PhysicalResourceId\") | first }}"
-
 - name: Upload Glue script to S3
   amazon.aws.s3_object:
     bucket: "{{ s3_bucket }}"
@@ -18,8 +8,7 @@
 - name: Create Glue JDBC connection
   community.aws.glue_connection:
     name: "{{ glue_connection_name }}"
-    # Fixed AZ casing to match GovCloud standard (us-gov-west-1a)
-    availability_zone: "{{ aws_region }}a" 
+    availability_zone: us-east-1a
     connection_properties:
       JDBC_CONNECTION_URL: "jdbc:postgresql://{{ rds.endpoint }}:5432/{{ db_secret.dbname }}"
       USERNAME: "{{ db_secret.username }}"
@@ -32,8 +21,7 @@
 - name: Create Glue Job
   community.aws.glue_job:
     name: "{{ glue_job_name }}"
-    # Use the ARN retrieved from the CloudFormation stack
-    role: "{{ glue_role_arn }}"
+    role: "{{ glue_role_name }}"
     glue_version: "4.0"
     command_python_version: "3"
     worker_type: G.1X
