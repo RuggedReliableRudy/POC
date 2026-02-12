@@ -2,7 +2,7 @@
   command: >
     aws secretsmanager get-secret-value
     --secret-id accumulator
-    --region us-Gov-west-1
+    --region us-gov-west-1
   register: secret_raw
   changed_when: false
 
