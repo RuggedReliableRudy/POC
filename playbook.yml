@@ -5,6 +5,7 @@
     - group_vars/all/secrets.yml
   roles:
     - vpc
+    - iam
     - security_group
     - s3
     - rds
