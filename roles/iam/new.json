@@ -1,0 +1,19 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:*",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListAttachedRolePolicies",
+                "iam:DetachRolePolicy",
+                "iam:AttachRolePolicy",
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:*",
+                "cloudformation:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
