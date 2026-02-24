@@ -17,65 +17,36 @@ jobs:
       contents: read
 
     steps:
-      # -----------------------------
-      # Checkout source code
-      # -----------------------------
-      - name: Checkout
+      - name: Checkout source code
         uses: actions/checkout@v4
 
-      # -----------------------------
-      # Build Docker image (JAR is already in docker/)
-      # -----------------------------
+      # Build Docker image (JAR already in docker/)
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME ./docker
 
-      # -----------------------------
-      # Configure AWS credentials
-      # -----------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
 
-      # -----------------------------
-      # Login to ECR
-      # -----------------------------
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # -----------------------------
-      # Tag image
-      # -----------------------------
       - name: Tag image
         run: docker tag $IMAGE_NAME:latest ${{ secrets.ECR_URI }}:latest
 
-      # -----------------------------
-      # Push image to ECR
-      # -----------------------------
       - name: Push image
         run: docker push ${{ secrets.ECR_URI }}:latest
 
-      # -----------------------------
-      # Setup Terraform
-      # -----------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # -----------------------------
-      # Terraform Init
-      # -----------------------------
       - name: Terraform Init
         run: terraform init
 
-      # -----------------------------
-      # Terraform Plan
-      # -----------------------------
       - name: Terraform Plan
         run: terraform plan
 
-      # -----------------------------
-      # Terraform Apply
-      # -----------------------------
       - name: Terraform Apply
-        run: terraform apply 
+        run: terraform apply
