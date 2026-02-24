@@ -35,8 +35,9 @@ jobs:
       # -----------------------------
       # Build the JAR with Maven
       # -----------------------------
-      - name: Build JAR
-        run: mvn -B package
+      - name: Build Docker image
+        run: docker build -t $IMAGE_NAME ./docker
+
 
       # -----------------------------
       # Copy JAR into Docker context
