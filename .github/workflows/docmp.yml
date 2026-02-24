@@ -29,8 +29,8 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: .
+        #working-directory: .
 
       - name: Terraform Apply (deploy ECS)
         run: terraform apply -auto-approve
-        working-directory: .
+        #working-directory: .
