@@ -38,8 +38,8 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply
-        run: terraform apply
+      - name: Terraform Apply 
+        run: terraform -chdir=terraform apply -auto-approve
 
       - name: Get ECR URI from Terraform
         id: ecr
