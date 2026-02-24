@@ -1,0 +1,36 @@
+name: Build and Push to ECR
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: us-gov-west-1
+  IMAGE_NAME: cpeload-app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image
+        run: docker build -t $IMAGE_NAME ./docker
+
+      - name: Tag image
+        run: docker tag $IMAGE_NAME:latest ${{ secrets.ECR_URI }}:latest
+
+      - name: Push image
+        run: docker push ${{ secrets.ECR_URI }}:latest
