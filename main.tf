@@ -7,13 +7,13 @@ data "aws_vpc" "this" {
 # -------------------------
 
 resource "aws_security_group" "rds" {
-  name        = "cpeload-rds-sg"
-  vpc_id      = var.vpc_id
+  name   = "cpeload-rds-sg"
+  vpc_id = var.vpc_id
 }
 
 resource "aws_security_group" "ecs" {
-  name        = "cpeload-ecs-sg"
-  vpc_id      = var.vpc_id
+  name   = "cpeload-ecs-sg"
+  vpc_id = var.vpc_id
 }
 
 resource "aws_security_group_rule" "ecs_to_rds" {
@@ -42,9 +42,9 @@ resource "aws_rds_cluster" "postgres" {
   master_username    = var.db_username
   master_password    = var.db_password
 
-  db_subnet_group_name     = aws_db_subnet_group.rds.name
-  vpc_security_group_ids   = [aws_security_group.rds.id]
-  backup_retention_period  = 7
+  db_subnet_group_name   = aws_db_subnet_group.rds.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  backup_retention_period = 7
 }
 
 resource "aws_rds_cluster_instance" "postgres_instances" {
@@ -61,10 +61,6 @@ resource "aws_rds_cluster_instance" "postgres_instances" {
 
 resource "aws_ecs_cluster" "this" {
   name = "cpeload-cluster"
-}
-
-resource "aws_ecr_repository" "cpeload" {
-  name = "cpeload-app"
 }
 
 # -------------------------
@@ -133,7 +129,7 @@ resource "aws_ecs_task_definition" "cpeload" {
   container_definitions = jsonencode([
     {
       name      = "cpeload-app"
-      image     = "${var.ecr_uri}:${var.image_tag}"   # <-- UPDATED LINE
+      image     = "${var.ecr_uri}:${var.image_tag}"
       essential = true
       command   = ["java", "-jar", "CpeLoad-0.1.jar"]
 
@@ -144,6 +140,17 @@ resource "aws_ecs_task_definition" "cpeload" {
         { name = "DB_USER", value = var.db_username },
         { name = "S3_BUCKET", value = "project-accumulator-glue-job" }
       ]
+
+      healthCheck = {
+        command = [
+          "CMD-SHELL",
+          "curl -f http://localhost:8080/actuator/health && nc -z ${aws_rds_cluster.postgres.endpoint} 5430"
+        ]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -172,6 +179,12 @@ resource "aws_ecs_service" "cpeload" {
   task_definition = aws_ecs_task_definition.cpeload.arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
+
+  deployment_controller {
+    type = "ECS"
+  }
+
+  force_new_deployment = true
 
   network_configuration {
     subnets         = var.ecs_subnet_ids
