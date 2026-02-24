@@ -31,7 +31,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       # ----------------------------------------------------
-      # Create ECR repo ONLY if it does not exist
+      # Ensure ECR repo exists
       # ----------------------------------------------------
       - name: Ensure ECR repository exists
         run: |
@@ -51,10 +51,19 @@ jobs:
           echo "ECR_URI=$URI" > ecr.txt
 
       # ----------------------------------------------------
-      # Generate unique image tag (SHA)
+      # Generate image tag + print it clearly
       # ----------------------------------------------------
       - name: Generate image tag
-        run: echo "IMAGE_TAG=${GITHUB_SHA}" > image.txt
+        run: |
+          TAG=${GITHUB_SHA}
+          echo "IMAGE_TAG=$TAG" > image.txt
+
+          echo ""
+          echo "=============================================="
+          echo " 🚀 IMAGE TAG GENERATED FOR DEPLOYMENT"
+          echo "     $TAG"
+          echo "=============================================="
+          echo ""
 
       # ----------------------------------------------------
       # Upload tag artifact for deploy workflow
