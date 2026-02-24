@@ -35,11 +35,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: image-tag
+          path: ./artifact
 
       - name: Load ECR URI + Image Tag
         run: |
-          echo "ECR_URI=$(cut -d '=' -f2 ecr.txt)" >> $GITHUB_ENV
-          echo "IMAGE_TAG=$(cut -d '=' -f2 image.txt)" >> $GITHUB_ENV
+          echo "ECR_URI=$(cut -d '=' -f2 ./artifact/ecr.txt)" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$(cut -d '=' -f2 ./artifact/image.txt)" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: terraform init
