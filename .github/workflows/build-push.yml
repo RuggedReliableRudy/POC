@@ -37,13 +37,17 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        working-directory: ./RuggedReliableRudy/terraform
 
-      - name: Terraform Apply 
-        run: terraform -chdir=terraform apply -auto-approve
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./RuggedReliableRudy/terraform
 
       - name: Get ECR URI from Terraform
         id: ecr
-        run: echo "ECR_URI=$(terraform -chdir=terraform output -raw ecr_repo_uri)" >> $GITHUB_ENV
+        run: echo "ECR_URI=$(terraform output -raw ecr_repo_uri)" >> $GITHUB_ENV
+        working-directory: ./RuggedReliableRudy/terraform
+
 
       - name: Tag image
         run: docker tag $IMAGE_NAME:latest $ECR_URI:latest
