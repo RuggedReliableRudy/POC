@@ -1,12 +1,14 @@
 variable "vpc_id" {
   type        = string
   default     = "vpc-0faf5f1fb582102a6"
-  description = "Existing VPC ID"
 }
 
 variable "ecs_subnet_ids" {
-  type        = list(string)
-  description = "Private subnet IDs for ECS/RDS"
+  type = list(string)
+  default = [
+    "subnet-0d8ee0c3b94df5735",
+    "subnet-0d2dc9c4e190e15ae"
+  ]
 }
 
 variable "db_username" {
@@ -21,12 +23,12 @@ variable "db_password" {
 
 variable "db_name" {
   type    = string
-  default = "docmp-accumulator"
+  default = "cpeload"
 }
 
 variable "container_image" {
   type        = string
-  description = "ECR image URI that runs CpeLoad-0.1.jar"
+  description = "ECR image URI for the CpeLoad application"
 }
 
 variable "desired_count" {
