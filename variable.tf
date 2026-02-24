@@ -35,3 +35,6 @@ variable "desired_count" {
   type    = number
   default = 2
 }
+variable "image_tag" {
+  type = string
+}
