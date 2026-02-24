@@ -63,6 +63,10 @@ resource "aws_ecs_cluster" "this" {
   name = "cpeload-cluster"
 }
 
+resource "aws_ecr_repository" "cpeload" {
+  name = "cpeload-app"
+}
+
 # -------------------------
 # IAM Roles
 # -------------------------
