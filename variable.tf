@@ -21,7 +21,7 @@ variable "db_password" {
 
 variable "db_name" {
   type    = string
-  default = "cpeload"
+  default = "docmp-accumulator"
 }
 
 variable "container_image" {
