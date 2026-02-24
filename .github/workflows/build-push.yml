@@ -1,4 +1,4 @@
-name: Build, Package, Push, and Deploy
+name: Deploy CprLoad app
 
 on:
   push:
@@ -20,7 +20,6 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      # Build Docker image (JAR already in docker/)
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME ./docker
 
@@ -33,20 +32,21 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Tag image
-        run: docker tag $IMAGE_NAME:latest ${{ secrets.ECR_URI }}:latest
-
-      - name: Push image
-        run: docker push ${{ secrets.ECR_URI }}:latest
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Plan
-        run: terraform plan
-
       - name: Terraform Apply
         run: terraform apply
+
+      - name: Get ECR URI from Terraform
+        id: ecr
+        run: echo "ECR_URI=$(terraform -chdir=terraform output -raw ecr_repo_uri)" >> $GITHUB_ENV
+
+      - name: Tag image
+        run: docker tag $IMAGE_NAME:latest $ECR_URI:latest
+
+      - name: Push image
+        run: docker push $ECR_URI:latest
