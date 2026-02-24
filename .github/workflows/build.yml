@@ -15,7 +15,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      actions: write   # needed to upload artifact
+      actions: write   # needed to upload artifacts
 
     steps:
       - name: Checkout source code
@@ -41,11 +41,16 @@ jobs:
           URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --query "repositories[0].repositoryUri" --output text)
           echo "ECR_URI=$URI" >> ecr.txt
 
-      - name: Upload ECR URI artifact
+      - name: Generate image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> image.txt
+
+      - name: Upload artifacts (ECR URI + tag)
         uses: actions/upload-artifact@v4
         with:
-          name: ecr-uri
-          path: ecr.txt
+          name: build-artifacts
+          path: |
+            ecr.txt
+            image.txt
 
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME ./docker
@@ -53,9 +58,11 @@ jobs:
       - name: Tag image
         run: |
           URI=$(cat ecr.txt | cut -d '=' -f2)
-          docker tag $IMAGE_NAME:latest $URI:latest
+          TAG=$(cat image.txt | cut -d '=' -f2)
+          docker tag $IMAGE_NAME:latest $URI:$TAG
 
       - name: Push image to ECR
         run: |
           URI=$(cat ecr.txt | cut -d '=' -f2)
-          docker push $URI:latest
+          TAG=$(cat image.txt | cut -d '=' -f2)
+          docker push $URI:$TAG
