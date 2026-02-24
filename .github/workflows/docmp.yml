@@ -3,8 +3,7 @@ name: Deploy CpeLoad Infrastructure
 on:
   workflow_run:
     workflows: ["Build CpeLoad Image"]
-    types:
-      - completed
+    types: [completed]
 
 env:
   AWS_REGION: us-gov-west-1
@@ -17,6 +16,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: read   # needed to download artifact
 
     steps:
       - name: Checkout source code
@@ -30,6 +30,16 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
+      - name: Download ECR URI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ecr-uri
+
+      - name: Load ECR URI
+        run: |
+          ECR_URI=$(cat ecr.txt | cut -d '=' -f2)
+          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: terraform init
