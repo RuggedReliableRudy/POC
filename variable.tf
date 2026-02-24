@@ -1,6 +1,10 @@
+# -------------------------
+# Networking
+# -------------------------
+
 variable "vpc_id" {
-  type        = string
-  default     = "vpc-0faf5f1fb582102a6"
+  type    = string
+  default = "vpc-0faf5f1fb582102a6"
 }
 
 variable "ecs_subnet_ids" {
@@ -10,6 +14,10 @@ variable "ecs_subnet_ids" {
     "subnet-0d2dc9c4e190e15ae"
   ]
 }
+
+# -------------------------
+# Database Configuration
+# -------------------------
 
 variable "db_username" {
   type      = string
@@ -26,19 +34,21 @@ variable "db_name" {
   default = "docmp-accumulator-project"
 }
 
-variable "container_image" {
-  type        = string
-  description = "ECR image URI for the CpeLoad application"
-}
+# -------------------------
+# ECS Deployment
+# -------------------------
 
 variable "desired_count" {
   type    = number
   default = 2
 }
-variable "image_tag" {
-  type = string
-}
+
 variable "ecr_uri" {
-  type = string
+  type        = string
+  description = "ECR repository URI passed from GitHub Actions"
 }
 
+variable "image_tag" {
+  type        = string
+  description = "Docker image tag passed from GitHub Actions"
+}
