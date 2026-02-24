@@ -16,7 +16,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      actions: read   # needed to download artifact
+      actions: read   # needed to download artifacts
 
     steps:
       - name: Checkout source code
@@ -31,18 +31,18 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Download ECR URI artifact
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ecr-uri
+          name: build-artifacts
 
-      - name: Load ECR URI
+      - name: Load ECR URI + Image Tag
         run: |
-          ECR_URI=$(cat ecr.txt | cut -d '=' -f2)
-          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+          echo "ECR_URI=$(cat ecr.txt | cut -d '=' -f2)" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$(cat image.txt | cut -d '=' -f2)" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
+      - name: Terraform Apply (deploy ECS)
+        run: terraform apply -auto-approve -var="image_tag=${IMAGE_TAG}"
