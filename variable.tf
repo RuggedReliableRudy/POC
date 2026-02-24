@@ -38,3 +38,7 @@ variable "desired_count" {
 variable "image_tag" {
   type = string
 }
+variable "ecr_uri" {
+  type = string
+}
+
