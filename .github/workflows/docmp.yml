@@ -1,13 +1,11 @@
-name: Deploy CpeLoad
+name: Terraform Deploy
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
 
 env:
   AWS_REGION: us-gov-west-1
-  TF_IN_AUTOMATION: "true"
 
 jobs:
   terraform:
@@ -18,31 +16,21 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (GovCloud)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
-          role-session-name: github-actions-terraform
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
+      - uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: |
-          terraform init \
-            -backend-config="bucket=project-accumulator-statefile" \
-            -backend-config="key=terraform/us-gov-west-1/infra.tfstate" \
-            -backend-config="region=us-gov-west-1"
+        run: terraform -chdir=terraform init
 
       - name: Terraform Plan
-        run: terraform plan -input=false
+        run: terraform -chdir=terraform plan -input=false
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        run: terraform apply -input=false -auto-approve
+        run: terraform -chdir=terraform apply -input=false -auto-approve
