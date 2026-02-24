@@ -1,15 +1,13 @@
-name: Deploy CpeLoad app
+name: Deploy CpeLoad Infrastructure
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-gov-west-1
-  IMAGE_NAME: cpeload-app
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     permissions:
@@ -17,76 +15,22 @@ jobs:
       contents: read
 
     steps:
-      # ----------------------------------------------------
-      # 1. Checkout repository
-      # ----------------------------------------------------
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      # ----------------------------------------------------
-      # 2. Configure AWS credentials
-      # ----------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
 
-      # ----------------------------------------------------
-      # 3. Login to ECR
-      # ----------------------------------------------------
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      # ----------------------------------------------------
-      # 4. Install Terraform
-      # ----------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # ----------------------------------------------------
-      # 5. Terraform Init (repo root)
-      # ----------------------------------------------------
       - name: Terraform Init
         run: terraform init
         working-directory: .
 
-      # ----------------------------------------------------
-      # 6. Terraform Apply (create ECR ONLY)
-      # ----------------------------------------------------
-      - name: Terraform Apply (infra only)
-        run: terraform apply -auto-approve
-        working-directory: .
-
-      # ----------------------------------------------------
-      # 7. Read ECR URI from Terraform output
-      # ----------------------------------------------------
-      - name: Get ECR URI from Terraform
-        id: ecr
-        run: echo "ECR_URI=$(terraform output -raw ecr_repo_uri)" >> $GITHUB_ENV
-        working-directory: .
-
-      # ----------------------------------------------------
-      # 8. Build Docker image (JAR already in docker/)
-      # ----------------------------------------------------
-      - name: Build Docker image
-        run: docker build -t $IMAGE_NAME ./docker
-
-      # ----------------------------------------------------
-      # 9. Tag Docker image with ECR URI
-      # ----------------------------------------------------
-      - name: Tag image
-        run: docker tag $IMAGE_NAME:latest $ECR_URI:latest
-
-      # ----------------------------------------------------
-      # 10. Push Docker image to ECR
-      # ----------------------------------------------------
-      - name: Push image to ECR
-        run: docker push $ECR_URI:latest
-
-      # ----------------------------------------------------
-      # 11. Terraform Apply again (deploy ECS with new image)
-      # ----------------------------------------------------
       - name: Terraform Apply (deploy ECS)
         run: terraform apply -auto-approve
         working-directory: .
