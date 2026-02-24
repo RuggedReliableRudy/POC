@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag to deploy (SHA from build)"
+        description: "Docker image tag to deploy (SHA from build output)"
         required: true
         type: string
 
@@ -39,9 +39,6 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        
-      - name: Terraform plan
-        run: terraform plan
 
       - name: Terraform Apply
         run: terraform apply -auto-approve \
