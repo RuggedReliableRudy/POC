@@ -15,7 +15,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      actions: write   # needed to upload artifacts
+      actions: write
 
     steps:
       - name: Checkout source code
@@ -30,37 +30,61 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      # ----------------------------------------------------
+      # Create ECR repo ONLY if it does not exist
+      # ----------------------------------------------------
       - name: Ensure ECR repository exists
         run: |
-          aws ecr describe-repositories --repository-names $IMAGE_NAME || \
-          aws ecr create-repository --repository-name $IMAGE_NAME
+          if ! aws ecr describe-repositories --repository-names $IMAGE_NAME >/dev/null 2>&1; then
+            echo "ECR repo does not exist. Creating..."
+            aws ecr create-repository --repository-name $IMAGE_NAME
+          else
+            echo "ECR repo already exists. Skipping creation."
+          fi
 
+      # ----------------------------------------------------
+      # Get ECR URI
+      # ----------------------------------------------------
       - name: Get ECR URI
-        id: ecr
         run: |
           URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --query "repositories[0].repositoryUri" --output text)
           echo "ECR_URI=$URI" > ecr.txt
 
+      # ----------------------------------------------------
+      # Generate unique image tag (SHA)
+      # ----------------------------------------------------
       - name: Generate image tag
         run: echo "IMAGE_TAG=${GITHUB_SHA}" > image.txt
 
-      - name: Upload artifacts (ECR URI + tag)
+      # ----------------------------------------------------
+      # Upload tag artifact for deploy workflow
+      # ----------------------------------------------------
+      - name: Upload image tag artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
+          name: image-tag
           path: |
             ecr.txt
             image.txt
 
+      # ----------------------------------------------------
+      # Build Docker image
+      # ----------------------------------------------------
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME ./docker
 
+      # ----------------------------------------------------
+      # Tag Docker image
+      # ----------------------------------------------------
       - name: Tag image
         run: |
           URI=$(cut -d '=' -f2 ecr.txt)
           TAG=$(cut -d '=' -f2 image.txt)
           docker tag $IMAGE_NAME:latest $URI:$TAG
 
+      # ----------------------------------------------------
+      # Push Docker image to ECR
+      # ----------------------------------------------------
       - name: Push image to ECR
         run: |
           URI=$(cut -d '=' -f2 ecr.txt)
