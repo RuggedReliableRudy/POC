@@ -1,13 +1,17 @@
 name: Deploy CpeLoad Infrastructure
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build CpeLoad Image"]
+    types:
+      - completed
 
 env:
   AWS_REGION: us-gov-west-1
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -29,8 +33,6 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        #working-directory: .
 
-      - name: Terraform Apply (deploy ECS)
+      - name: Terraform Apply
         run: terraform apply -auto-approve
-        #working-directory: .
