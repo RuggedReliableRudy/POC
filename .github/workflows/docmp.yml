@@ -1,22 +1,23 @@
 name: Deploy CpeLoad Infrastructure
 
 on:
-  workflow_run:
-    workflows: ["Build CpeLoad Image"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy (SHA from build)"
+        required: true
+        type: string
 
 env:
   AWS_REGION: us-gov-west-1
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     permissions:
       id-token: write
       contents: read
-      actions: read
 
     steps:
       - name: Checkout source code
@@ -31,21 +32,15 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Download image tag artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: image-tag
-          path: ./artifact
-
-      - name: Load ECR URI + Image Tag
+      - name: Set ECR URI + Image Tag
         run: |
-          echo "ECR_URI=$(cut -d '=' -f2 ./artifact/ecr.txt)" >> $GITHUB_ENV
-          echo "IMAGE_TAG=$(cut -d '=' -f2 ./artifact/image.txt)" >> $GITHUB_ENV
+          echo "ECR_URI=${{ secrets.ECR_URI }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply (deploy ECS)
+      - name: Terraform Apply
         run: terraform apply -auto-approve \
               -var="ecr_uri=${ECR_URI}" \
               -var="image_tag=${IMAGE_TAG}"
