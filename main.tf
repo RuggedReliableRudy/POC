@@ -133,7 +133,7 @@ resource "aws_ecs_task_definition" "cpeload" {
   container_definitions = jsonencode([
     {
       name      = "cpeload-app"
-      image     = var.container_image
+      image     = "${var.ecr_uri}:${var.image_tag}"   # <-- UPDATED LINE
       essential = true
       command   = ["java", "-jar", "CpeLoad-0.1.jar"]
 
