@@ -15,6 +15,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: write   # needed to upload artifact
 
     steps:
       - name: Checkout source code
@@ -29,11 +30,32 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names $IMAGE_NAME || \
+          aws ecr create-repository --repository-name $IMAGE_NAME
+
+      - name: Get ECR URI
+        id: ecr
+        run: |
+          URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --query "repositories[0].repositoryUri" --output text)
+          echo "ECR_URI=$URI" >> ecr.txt
+
+      - name: Upload ECR URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecr-uri
+          path: ecr.txt
+
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME ./docker
 
       - name: Tag image
-        run: docker tag $IMAGE_NAME:latest ${{ secrets.ECR_URI }}:latest
+        run: |
+          URI=$(cat ecr.txt | cut -d '=' -f2)
+          docker tag $IMAGE_NAME:latest $URI:latest
 
       - name: Push image to ECR
-        run: docker push ${{ secrets.ECR_URI }}:latest
+        run: |
+          URI=$(cat ecr.txt | cut -d '=' -f2)
+          docker push $URI:latest
