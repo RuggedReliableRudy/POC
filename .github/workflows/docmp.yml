@@ -38,12 +38,15 @@ jobs:
 
       - name: Load ECR URI + Image Tag
         run: |
-          echo "ECR_URI=$(cat ecr.txt | cut -d '=' -f2)" >> $GITHUB_ENV
-          echo "IMAGE_TAG=$(cat image.txt | cut -d '=' -f2)" >> $GITHUB_ENV
+          export ECR_URI=$(cut -d '=' -f2 ecr.txt)
+          export IMAGE_TAG=$(cut -d '=' -f2 image.txt)
+          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: terraform init
 
       - name: Terraform Apply (deploy ECS)
-        run: terraform apply -auto-approve -var="image_tag=${IMAGE_TAG}" -var="ecr_uri=${ECR_URI}"
-
+        run: terraform apply -auto-approve \
+              -var="ecr_uri=${ECR_URI}" \
+              -var="image_tag=${IMAGE_TAG}"
