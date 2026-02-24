@@ -24,26 +24,10 @@ jobs:
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Set up Java 21 for Maven build
-      # -----------------------------
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      # -----------------------------
-      # Build the JAR with Maven
+      # Build Docker image (JAR is already in docker/)
       # -----------------------------
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME ./docker
-
-
-      # -----------------------------
-      # Copy JAR into Docker context
-      # -----------------------------
-      - name: Copy JAR into docker folder
-        run: cp target/CpeLoad-0.1.jar docker/
 
       # -----------------------------
       # Configure AWS credentials
@@ -61,12 +45,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       # -----------------------------
-      # Build Docker image
-      # -----------------------------
-      - name: Build Docker image
-        run: docker build -t $IMAGE_NAME ./docker
-
-      # -----------------------------
       # Tag image
       # -----------------------------
       - name: Tag image
@@ -79,11 +57,14 @@ jobs:
         run: docker push ${{ secrets.ECR_URI }}:latest
 
       # -----------------------------
-      # Terraform Init
+      # Setup Terraform
       # -----------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # -----------------------------
+      # Terraform Init
+      # -----------------------------
       - name: Terraform Init
         run: terraform init
 
@@ -97,4 +78,4 @@ jobs:
       # Terraform Apply
       # -----------------------------
       - name: Terraform Apply
-        run: terraform apply
+        run: terraform apply 
