@@ -39,10 +39,10 @@ jobs:
         id: ecr
         run: |
           URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --query "repositories[0].repositoryUri" --output text)
-          echo "ECR_URI=$URI" >> ecr.txt
+          echo "ECR_URI=$URI" > ecr.txt
 
       - name: Generate image tag
-        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> image.txt
+        run: echo "IMAGE_TAG=${GITHUB_SHA}" > image.txt
 
       - name: Upload artifacts (ECR URI + tag)
         uses: actions/upload-artifact@v4
@@ -57,12 +57,12 @@ jobs:
 
       - name: Tag image
         run: |
-          URI=$(cat ecr.txt | cut -d '=' -f2)
-          TAG=$(cat image.txt | cut -d '=' -f2)
+          URI=$(cut -d '=' -f2 ecr.txt)
+          TAG=$(cut -d '=' -f2 image.txt)
           docker tag $IMAGE_NAME:latest $URI:$TAG
 
       - name: Push image to ECR
         run: |
-          URI=$(cat ecr.txt | cut -d '=' -f2)
-          TAG=$(cat image.txt | cut -d '=' -f2)
+          URI=$(cut -d '=' -f2 ecr.txt)
+          TAG=$(cut -d '=' -f2 image.txt)
           docker push $URI:$TAG
