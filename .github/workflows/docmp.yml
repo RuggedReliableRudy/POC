@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag to deploy (SHA from build output)"
+        description: "Docker image tag (Full SHA from ECR)"
         required: true
         type: string
 
 env:
   AWS_REGION: us-gov-west-1
+  IMAGE_NAME: cpeload-app # Matches your build.yml
 
 jobs:
   deploy:
@@ -32,15 +33,29 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Set ECR URI + Image Tag
+      # ----------------------------------------------------
+      # Dynamically fetch URI to prevent hardcoding secrets
+      # ----------------------------------------------------
+      - name: Fetch ECR URI
+        id: fetch-info
         run: |
-          echo "ECR_URI=${{ secrets.ECR_URI }}" >> $GITHUB_ENV
-          echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+          URI=$(aws ecr describe-repositories --repository-names ${{ env.IMAGE_NAME }} --query "repositories[0].repositoryUri" --output text)
+          echo "ECR_URI=$URI" >> $GITHUB_ENV
+          echo "Using URI: $URI"
+
+      # ----------------------------------------------------
+      # Optional: Verify the tag actually exists in ECR before running TF
+      # ----------------------------------------------------
+      - name: Verify Image Tag Exists
+        run: |
+          aws ecr describe-images --repository-name ${{ env.IMAGE_NAME }} --image-ids imageTag=${{ github.event.inputs.image_tag }} > /dev/null
+          echo "✅ Tag ${{ github.event.inputs.image_tag }} found in ECR."
 
       - name: Terraform Init
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve \
-              -var="ecr_uri=${ECR_URI}" \
-              -var="image_tag=${IMAGE_TAG}"
+        run: |
+          terraform apply -auto-approve \
+            -var="ecr_uri=${{ env.ECR_URI }}" \
+            -var="image_tag=${{ github.event.inputs.image_tag }}"
