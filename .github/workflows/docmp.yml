@@ -1,21 +1,24 @@
-name: Build CpeLoad Image
+name: Deploy CpeLoad Infrastructure
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Optional: override image tag (SHA). Leave empty to deploy latest."
+        required: false
+        type: string
 
 env:
   AWS_REGION: us-gov-west-1
   IMAGE_NAME: cpeload-app
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     permissions:
       id-token: write
       contents: read
-      actions: write
 
     steps:
       - name: Checkout source code
@@ -27,75 +30,55 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
       # ----------------------------------------------------
-      # Ensure ECR repo exists
+      # Fetch ECR URI
       # ----------------------------------------------------
-      - name: Ensure ECR repository exists
+      - name: Fetch ECR URI
         run: |
-          if ! aws ecr describe-repositories --repository-names $IMAGE_NAME >/dev/null 2>&1; then
-            echo "ECR repo does not exist. Creating..."
-            aws ecr create-repository --repository-name $IMAGE_NAME
+          URI=$(aws ecr describe-repositories \
+            --repository-names ${{ env.IMAGE_NAME }} \
+            --query "repositories[0].repositoryUri" \
+            --output text)
+          echo "ECR_URI=$URI" >> $GITHUB_ENV
+          echo "Using ECR URI: $URI"
+
+      # ----------------------------------------------------
+      # Determine which tag to deploy
+      # ----------------------------------------------------
+      - name: Determine image tag
+        run: |
+          if [ -z "${{ github.event.inputs.image_tag }}" ]; then
+            TAG=$(aws ecr describe-images \
+              --repository-name ${{ env.IMAGE_NAME }} \
+              --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
+              --output text)
+            echo "Using latest tag: $TAG"
           else
-            echo "ECR repo already exists. Skipping creation."
+            TAG="${{ github.event.inputs.image_tag }}"
+            echo "Using provided tag: $TAG"
           fi
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
       # ----------------------------------------------------
-      # Get ECR URI
+      # Terraform Deploy
       # ----------------------------------------------------
-      - name: Get ECR URI
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
         run: |
-          URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --query "repositories[0].repositoryUri" --output text)
-          echo "ECR_URI=$URI" > ecr.txt
+          terraform apply -auto-approve \
+            -var="ecr_uri=${ECR_URI}" \
+            -var="image_tag=${IMAGE_TAG}"
 
       # ----------------------------------------------------
-      # Generate image tag + print it clearly
+      # Run DB Migration AFTER DB is deployed
       # ----------------------------------------------------
-      - name: Generate image tag
+      - name: Run DB Migration (docmp_tables2)
         run: |
-          TAG=${GITHUB_SHA}
-          echo "IMAGE_TAG=$TAG" > image.txt
-
-          echo ""
-          echo "=============================================="
-          echo " 🚀 IMAGE TAG GENERATED FOR DEPLOYMENT"
-          echo "     $TAG"
-          echo "=============================================="
-          echo ""
-
-      # ----------------------------------------------------
-      # Upload tag artifact for deploy workflow
-      # ----------------------------------------------------
-      - name: Upload image tag artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-tag
-          path: |
-            ecr.txt
-            image.txt
-
-      # ----------------------------------------------------
-      # Build Docker image
-      # ----------------------------------------------------
-      - name: Build Docker image
-        run: docker build -t $IMAGE_NAME ./docker
-
-      # ----------------------------------------------------
-      # Tag Docker image
-      # ----------------------------------------------------
-      - name: Tag image
-        run: |
-          URI=$(cut -d '=' -f2 ecr.txt)
-          TAG=$(cut -d '=' -f2 image.txt)
-          docker tag $IMAGE_NAME:latest $URI:$TAG
-
-      # ----------------------------------------------------
-      # Push Docker image to ECR
-      # ----------------------------------------------------
-      - name: Push image to ECR
-        run: |
-          URI=$(cut -d '=' -f2 ecr.txt)
-          TAG=$(cut -d '=' -f2 image.txt)
-          docker push $URI:$TAG
+          echo "Running docmp_tables2.sql..."
+          psql "host=${{ secrets.DB_HOST }} port=5430 user=${{ secrets.DB_USER }} password=${{ secrets.DB_PASSWORD }} dbname=${{ secrets.DB_NAME }}" \
+            -f ./sql/docmp_tables2.sql
