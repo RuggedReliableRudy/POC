@@ -45,9 +45,10 @@ resource "aws_security_group_rule" "ecs_to_rds" {
 # -------------------------
 # Aurora PostgreSQL Cluster
 # -------------------------
-resource "aws_db_subnet_group" "rds" {
-  name       = "cpeload-rds-subnets"
-  subnet_ids = var.rds_subnet_ids
+
+# Use existing DB subnet group instead of creating a new one
+data "aws_db_subnet_group" "rds" {
+  name = "default-vpc-0bbb67cf591eb840c2-new-dev"
 }
 
 resource "aws_rds_cluster" "postgres" {
@@ -59,7 +60,7 @@ resource "aws_rds_cluster" "postgres" {
   master_username = local.db_creds.user
   master_password = local.db_creds.password
 
-  db_subnet_group_name    = aws_db_subnet_group.rds.name
+  db_subnet_group_name    = data.aws_db_subnet_group.rds.name
   vpc_security_group_ids  = [aws_security_group.rds.id]
   backup_retention_period = 7
 }
