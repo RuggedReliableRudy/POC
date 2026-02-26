@@ -96,17 +96,25 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Terraform Fmt
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform plan
-        run: terraform plan
+      - name: Terraform Plan
+        run: terraform plan \
+          -var="ecr_uri=${ECR_URI}" \
+          -var="image_tag=${IMAGE_TAG}"
 
       - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="ecr_uri=${ECR_URI}" \
-            -var="image_tag=${IMAGE_TAG}"
+        run: terraform apply -auto-approve \
+          -var="ecr_uri=${ECR_URI}" \
+          -var="image_tag=${IMAGE_TAG}"
+
 
       # ----------------------------------------------------
       # Run DB Migration AFTER DB is deployed
