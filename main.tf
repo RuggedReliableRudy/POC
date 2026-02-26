@@ -152,7 +152,7 @@ resource "aws_ecs_task_definition" "cpeload" {
         { name = "DB_HOST", value = aws_rds_cluster.postgres.endpoint },
         { name = "DB_PORT", value = "5430" },
         { name = "DB_NAME", value = var.db_name },
-        { name = "DB_USER", value = var.db_username },
+        { name = "DB_USER", value = local.db_creds.username },
         { name = "S3_BUCKET", value = "project-accumulator-glue-job" }
       ]
 
