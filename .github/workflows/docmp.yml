@@ -1,24 +1,21 @@
-name: Deploy CpeLoad Infrastructure
+name: Build CpeLoad Image
 
 on:
-  workflow_dispatch:
-    inputs:
-      image_tag:
-        description: "Docker image tag (Full SHA from ECR)"
-        required: true
-        type: string
+  push:
+    branches: [ "main" ]
 
 env:
   AWS_REGION: us-gov-west-1
-  IMAGE_NAME: cpeload-app # Matches your build.yml
+  IMAGE_NAME: cpeload-app
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     permissions:
       id-token: write
       contents: read
+      actions: write
 
     steps:
       - name: Checkout source code
@@ -30,32 +27,75 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
       # ----------------------------------------------------
-      # Dynamically fetch URI to prevent hardcoding secrets
+      # Ensure ECR repo exists
       # ----------------------------------------------------
-      - name: Fetch ECR URI
-        id: fetch-info
+      - name: Ensure ECR repository exists
         run: |
-          URI=$(aws ecr describe-repositories --repository-names ${{ env.IMAGE_NAME }} --query "repositories[0].repositoryUri" --output text)
-          echo "ECR_URI=$URI" >> $GITHUB_ENV
-          echo "Using URI: $URI"
+          if ! aws ecr describe-repositories --repository-names $IMAGE_NAME >/dev/null 2>&1; then
+            echo "ECR repo does not exist. Creating..."
+            aws ecr create-repository --repository-name $IMAGE_NAME
+          else
+            echo "ECR repo already exists. Skipping creation."
+          fi
 
       # ----------------------------------------------------
-      # Optional: Verify the tag actually exists in ECR before running TF
+      # Get ECR URI
       # ----------------------------------------------------
-      - name: Verify Image Tag Exists
+      - name: Get ECR URI
         run: |
-          aws ecr describe-images --repository-name ${{ env.IMAGE_NAME }} --image-ids imageTag=${{ github.event.inputs.image_tag }} > /dev/null
-          echo "✅ Tag ${{ github.event.inputs.image_tag }} found in ECR."
+          URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --query "repositories[0].repositoryUri" --output text)
+          echo "ECR_URI=$URI" > ecr.txt
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Apply
+      # ----------------------------------------------------
+      # Generate image tag + print it clearly
+      # ----------------------------------------------------
+      - name: Generate image tag
         run: |
-          terraform apply -auto-approve \
-            -var="ecr_uri=${{ env.ECR_URI }}" \
-            -var="image_tag=${{ github.event.inputs.image_tag }}"
+          TAG=${GITHUB_SHA}
+          echo "IMAGE_TAG=$TAG" > image.txt
+
+          echo ""
+          echo "=============================================="
+          echo " 🚀 IMAGE TAG GENERATED FOR DEPLOYMENT"
+          echo "     $TAG"
+          echo "=============================================="
+          echo ""
+
+      # ----------------------------------------------------
+      # Upload tag artifact for deploy workflow
+      # ----------------------------------------------------
+      - name: Upload image tag artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tag
+          path: |
+            ecr.txt
+            image.txt
+
+      # ----------------------------------------------------
+      # Build Docker image
+      # ----------------------------------------------------
+      - name: Build Docker image
+        run: docker build -t $IMAGE_NAME ./docker
+
+      # ----------------------------------------------------
+      # Tag Docker image
+      # ----------------------------------------------------
+      - name: Tag image
+        run: |
+          URI=$(cut -d '=' -f2 ecr.txt)
+          TAG=$(cut -d '=' -f2 image.txt)
+          docker tag $IMAGE_NAME:latest $URI:$TAG
+
+      # ----------------------------------------------------
+      # Push Docker image to ECR
+      # ----------------------------------------------------
+      - name: Push image to ECR
+        run: |
+          URI=$(cut -d '=' -f2 ecr.txt)
+          TAG=$(cut -d '=' -f2 image.txt)
+          docker push $URI:$TAG
