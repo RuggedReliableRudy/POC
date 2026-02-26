@@ -96,6 +96,9 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
       - name: Terraform Fmt
         run: terraform fmt -check
 
@@ -106,12 +109,14 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: terraform plan \
-          -var="ecr_uri=${ECR_URI}" \
-          -var="image_tag=${IMAGE_TAG}"
+        run: |
+           terraform plan \
+           -var="ecr_uri=${ECR_URI}" \
+           -var="image_tag=${IMAGE_TAG}"
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve \
+        run: |
+          terraform apply -auto-approve \
           -var="ecr_uri=${ECR_URI}" \
           -var="image_tag=${IMAGE_TAG}"
 
