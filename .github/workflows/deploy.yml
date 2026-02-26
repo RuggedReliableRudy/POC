@@ -1,0 +1,115 @@
+name: Build and Deploy CpeLoad Infrastructure
+
+on:
+  push:
+    branches: [ "" ]
+
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Optional: override image tag (SHA). Leave empty to build & deploy latest."
+        required: false
+        type: string
+
+env:
+  AWS_REGION: us-gov-west-1
+  IMAGE_NAME: cpeload-app
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ----------------------------------------------------
+      # Ensure ECR repo exists
+      # ----------------------------------------------------
+      - name: Ensure ECR repository exists
+        run: |
+          if ! aws ecr describe-repositories --repository-names $IMAGE_NAME >/dev/null 2>&1; then
+            aws ecr create-repository --repository-name $IMAGE_NAME
+          fi
+
+      # ----------------------------------------------------
+      # Determine image tag
+      # ----------------------------------------------------
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -z "${{ github.event.inputs.image_tag }}" ]; then
+            TAG=${GITHUB_SHA}
+            echo "Using build SHA: $TAG"
+          else
+            TAG="${{ github.event.inputs.image_tag }}"
+            echo "Using provided tag: $TAG"
+          fi
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+
+      # ----------------------------------------------------
+      # Get ECR URI
+      # ----------------------------------------------------
+      - name: Get ECR URI
+        id: ecr
+        run: |
+          URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --query "repositories[0].repositoryUri" --output text)
+          echo "ECR_URI=$URI" >> $GITHUB_ENV
+
+      # ----------------------------------------------------
+      # Build Docker image
+      # ----------------------------------------------------
+      - name: Build Docker image
+        run: docker build -t $IMAGE_NAME ./docker
+
+      # ----------------------------------------------------
+      # Tag Docker image
+      # ----------------------------------------------------
+      - name: Tag image
+        run: |
+          docker tag $IMAGE_NAME:latest ${ECR_URI}:${IMAGE_TAG}
+
+      # ----------------------------------------------------
+      # Push Docker image to ECR
+      # ----------------------------------------------------
+      - name: Push image to ECR
+        run: |
+          docker push ${ECR_URI}:${IMAGE_TAG}
+
+      # ----------------------------------------------------
+      # Setup Terraform
+      # ----------------------------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="ecr_uri=${ECR_URI}" \
+            -var="image_tag=${IMAGE_TAG}"
+
+      # ----------------------------------------------------
+      # Run DB Migration AFTER DB is deployed
+      # ----------------------------------------------------
+      - name: Run DB Migration (docmp_tables.sql)
+        run: |
+          echo "Running docmp_tables.sql..."
+          psql "host=${{ secrets.DB_HOST }} port=5430 user=${{ secrets.DB_USER }} password=${{ secrets.DB_PASSWORD }} dbname=${{ secrets.DB_NAME }}" \
+            -f Project-Accumulator/docmp_tables.sql
