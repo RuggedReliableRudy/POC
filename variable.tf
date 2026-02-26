@@ -23,6 +23,10 @@ variable "ecs_subnet_ids" {
 # ECS Deployment
 # -------------------------
 
+variable "db_name" {
+  type = string
+}
+
 variable "desired_count" {
   type    = number
   default = 2
