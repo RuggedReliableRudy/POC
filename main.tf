@@ -53,9 +53,9 @@ resource "aws_rds_cluster" "postgres" {
   cluster_identifier = "cpeload-pg-cluster"
   engine             = "aurora-postgresql"
   engine_version     = "15.3"
-  database_name      = var.db_name
-  master_username    = local.db_creds.username
-  master_password    = local.db_creds.password
+  name               = local.db_creds.name
+  user               = local.db_creds.username
+  password           = local.db_creds.password
 
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   vpc_security_group_ids = [aws_security_group.rds.id]
