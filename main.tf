@@ -1,3 +1,18 @@
+# -------------------------
+# Secrets Lookup
+# -------------------------
+data "aws_secretsmanager_secret" "db_secret" {
+  name = "accumulator"
+}
+
+data "aws_secretsmanager_secret_version" "db_creds" {
+  secret_id = data.aws_secretsmanager_secret.db_secret.id
+}
+
+locals {
+  db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)
+}
+
 data "aws_vpc" "this" {
   id = var.vpc_id
 }
@@ -39,8 +54,8 @@ resource "aws_rds_cluster" "postgres" {
   engine             = "aurora-postgresql"
   engine_version     = "15.3"
   database_name      = var.db_name
-  master_username    = var.db_username
-  master_password    = var.db_password
+  master_username    = local.db_creds.username
+  master_password    = local.db_creds.password
 
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   vpc_security_group_ids = [aws_security_group.rds.id]
