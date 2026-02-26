@@ -47,7 +47,7 @@ resource "aws_security_group_rule" "ecs_to_rds" {
 # -------------------------
 resource "aws_db_subnet_group" "rds" {
   name       = "cpeload-rds-subnets"
-  subnet_ids = var.ecs_subnet_ids
+  subnet_ids = var.rds_subnet_ids
 }
 
 resource "aws_rds_cluster" "postgres" {
@@ -150,7 +150,7 @@ resource "aws_ecs_task_definition" "cpeload" {
       environment = [
         { name = "DB_HOST", value = aws_rds_cluster.postgres.endpoint },
         { name = "DB_PORT", value = "5430" },
-        { name = "DB_NAME", value = var.db_name },
+        { name = "DB_NAME", value = local.db_creds.name },
         { name = "DB_USER", value = local.db_creds.user },
         { name = "S3_BUCKET", value = "project-accumulator-glue-job" }
       ]
