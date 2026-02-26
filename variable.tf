@@ -15,17 +15,14 @@ variable "ecs_subnet_ids" {
   ]
 }
 
-# -------------------------
-# Database Configuration
-# -------------------------
+variable "rds_subnet_ids" {
+  type = list(string)
+  description = "Private subnets for RDS cluster"
+}
 
 # -------------------------
 # ECS Deployment
 # -------------------------
-
-variable "db_name" {
-  type = string
-}
 
 variable "desired_count" {
   type    = number
