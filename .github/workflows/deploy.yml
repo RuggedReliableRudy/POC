@@ -110,9 +110,9 @@ jobs:
 
       - name: Terraform Plan
         run: |
-           terraform plan \
-           -var="ecr_uri=${ECR_URI}" \
-           -var="image_tag=${IMAGE_TAG}"
+          terraform plan \
+          -var="ecr_uri=${ECR_URI}" \
+          -var="image_tag=${IMAGE_TAG}"
 
       - name: Terraform Apply
         run: |
