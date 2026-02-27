@@ -21,11 +21,28 @@ data "aws_vpc" "this" {
 }
 
 # -------------------------
+# DB Subnet Group (existing)
+# -------------------------
+data "aws_db_subnet_group" "rds" {
+  name = "default-vpc-0bbb67cf591eb840c2-new-dev"
+}
+
+# -------------------------
 # Security Groups
 # -------------------------
-resource "aws_security_group" "rds" {
-  name   = "cpeload-rds-sg"
+resource "aws_security_group" "db" {
+  name   = "pgactive-db-sg"
   vpc_id = var.vpc_id
+}
+
+# DB <-> DB (pgactive replication)
+resource "aws_security_group_rule" "db_bidirectional" {
+  type                     = "ingress"
+  from_port                = 5430
+  to_port                  = 5430
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.db.id
+  source_security_group_id = aws_security_group.db.id
 }
 
 resource "aws_security_group" "ecs" {
@@ -33,44 +50,69 @@ resource "aws_security_group" "ecs" {
   vpc_id = var.vpc_id
 }
 
-resource "aws_security_group_rule" "ecs_to_rds" {
+# ECS -> DB
+resource "aws_security_group_rule" "ecs_to_db" {
   type                     = "ingress"
   from_port                = 5430
   to_port                  = 5430
   protocol                 = "tcp"
-  security_group_id        = aws_security_group.rds.id
+  security_group_id        = aws_security_group.db.id
   source_security_group_id = aws_security_group.ecs.id
 }
 
 # -------------------------
-# Aurora PostgreSQL Cluster
+# Parameter Group for Logical Replication (pgactive)
 # -------------------------
+resource "aws_db_parameter_group" "pgactive" {
+  name        = "pgactive-params"
+  family      = "postgres15"
+  description = "Parameter group for pgactive active-active replication"
 
-# Use existing DB subnet group instead of creating a new one
-data "aws_db_subnet_group" "rds" {
-  name = "default-vpc-0bbb67cf591eb840c2-new-dev"
+  parameters = [
+    { name = "wal_level",               value = "logical" },
+    { name = "max_replication_slots",   value = "10" },
+    { name = "max_wal_senders",         value = "10" },
+    { name = "track_commit_timestamp",  value = "on" },
+    { name = "rds.logical_replication", value = "1" }
+  ]
 }
 
-resource "aws_rds_cluster" "postgres" {
-  cluster_identifier = "cpeload-pg-cluster"
-  engine             = "aurora-postgresql"
-  engine_version     = "15.3"
-
-  database_name   = local.db_creds.name
-  master_username = local.db_creds.user
-  master_password = local.db_creds.password
-
+# -------------------------
+# RDS PostgreSQL Node 1
+# -------------------------
+resource "aws_db_instance" "node1" {
+  identifier              = "pgactive-node1"
+  engine                  = "postgres"
+  engine_version          = "15.3"
+  instance_class          = "db.m6g.large"
+  allocated_storage       = 100
+  db_name                 = local.db_creds.name
+  username                = local.db_creds.user
+  password                = local.db_creds.password
+  port                    = 5430
+  parameter_group_name    = aws_db_parameter_group.pgactive.name
+  vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
-  vpc_security_group_ids  = [aws_security_group.rds.id]
-  backup_retention_period = 7
+  skip_final_snapshot     = true
 }
 
-resource "aws_rds_cluster_instance" "postgres_instances" {
-  count              = 2
-  identifier         = "cpeload-pg-${count.index}"
-  cluster_identifier = aws_rds_cluster.postgres.id
-  instance_class     = "db.r6g.large"
-  engine             = aws_rds_cluster.postgres.engine
+# -------------------------
+# RDS PostgreSQL Node 2
+# -------------------------
+resource "aws_db_instance" "node2" {
+  identifier              = "pgactive-node2"
+  engine                  = "postgres"
+  engine_version          = "15.3"
+  instance_class          = "db.m6g.large"
+  allocated_storage       = 100
+  db_name                 = local.db_creds.name
+  username                = local.db_creds.user
+  password                = local.db_creds.password
+  port                    = 5430
+  parameter_group_name    = aws_db_parameter_group.pgactive.name
+  vpc_security_group_ids  = [aws_security_group.db.id]
+  db_subnet_group_name    = data.aws_db_subnet_group.rds.name
+  skip_final_snapshot     = true
 }
 
 # -------------------------
@@ -108,12 +150,30 @@ resource "aws_iam_role" "ecs_task" {
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
 }
 
+# S3 access for app + SQL runner
+resource "aws_s3_bucket" "sql_bucket" {
+  bucket = "accumulator-sql-bucket"
+}
+
+resource "aws_s3_object" "docmp_tables" {
+  bucket = aws_s3_bucket.sql_bucket.bucket
+  key    = "docmp_tables.sql"
+  source = "docmp_tables.sql"
+}
+
 data "aws_iam_policy_document" "ecs_task_policy" {
   statement {
     actions = ["s3:GetObject", "s3:ListBucket"]
     resources = [
       "arn:aws-us-gov:s3:::project-accumulator-glue-job",
       "arn:aws-us-gov:s3:::project-accumulator-glue-job/*"
+    ]
+  }
+
+  statement {
+    actions = ["s3:GetObject"]
+    resources = [
+      "${aws_s3_bucket.sql_bucket.arn}/*"
     ]
   }
 }
@@ -129,7 +189,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_policy_attach" {
 }
 
 # -------------------------
-# ECS Task Definition
+# ECS Task Definition (App)
 # -------------------------
 resource "aws_ecs_task_definition" "cpeload" {
   family                   = "cpeload-task"
@@ -149,23 +209,12 @@ resource "aws_ecs_task_definition" "cpeload" {
       command   = ["java", "-jar", "CpeLoad-0.1.jar"]
 
       environment = [
-        { name = "DB_HOST", value = aws_rds_cluster.postgres.endpoint },
+        { name = "DB_HOST", value = aws_db_instance.node1.address },
         { name = "DB_PORT", value = "5430" },
         { name = "DB_NAME", value = local.db_creds.name },
         { name = "DB_USER", value = local.db_creds.user },
         { name = "S3_BUCKET", value = "project-accumulator-glue-job" }
       ]
-
-      healthCheck = {
-        command = [
-          "CMD-SHELL",
-          "curl -f http://localhost:8080/actuator/health && nc -z ${aws_rds_cluster.postgres.endpoint} 5430"
-        ]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
-      }
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -185,7 +234,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 }
 
 # -------------------------
-# ECS Service
+# ECS Service (App)
 # -------------------------
 resource "aws_ecs_service" "cpeload" {
   name            = "cpeload-service"
@@ -201,8 +250,91 @@ resource "aws_ecs_service" "cpeload" {
   force_new_deployment = true
 
   network_configuration {
-    subnets         = var.ecs_subnet_ids
-    security_groups = [aws_security_group.ecs.id]
+    subnets          = var.ecs_subnet_ids
+    security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = false
   }
+
+  depends_on = [
+    aws_ecs_task.run_sql
+  ]
+}
+
+# -------------------------
+# ECS Task Definition (SQL Runner)
+# - Creates DOCMP schema and runs docmp_tables.sql on Node 1
+# -------------------------
+resource "aws_cloudwatch_log_group" "sql_runner" {
+  name              = "/ecs/sql-runner"
+  retention_in_days = 14
+}
+
+resource "aws_ecs_task_definition" "sql_runner" {
+  family                   = "sql-runner-task"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+
+  execution_role_arn = aws_iam_role.ecs_task_execution.arn
+  task_role_arn      = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "sql-runner"
+      image     = "postgres:15"
+      essential = true
+
+      command = [
+        "sh", "-c",
+        "aws s3 cp s3://${aws_s3_bucket.sql_bucket.bucket}/docmp_tables.sql /tmp/docmp_tables.sql && " ..
+        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -c 'CREATE SCHEMA IF NOT EXISTS \"DOCMP\";' && " ..
+        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -f /tmp/docmp_tables.sql"
+      ]
+
+      environment = [
+        { name = "AWS_REGION", value = "us-gov-west-1" }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/sql-runner"
+          awslogs-region        = "us-gov-west-1"
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    }
+  ])
+}
+
+# -------------------------
+# One-time ECS Task to Run SQL
+# -------------------------
+resource "aws_ecs_task" "run_sql" {
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.sql_runner.arn
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.ecs_subnet_ids
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = false
+  }
+
+  depends_on = [
+    aws_db_instance.node1,
+    aws_db_instance.node2
+  ]
+}
+
+# -------------------------
+# Outputs
+# -------------------------
+output "node1_endpoint" {
+  value = aws_db_instance.node1.address
+}
+
+output "node2_endpoint" {
+  value = aws_db_instance.node2.address
 }
