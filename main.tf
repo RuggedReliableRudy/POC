@@ -251,23 +251,24 @@ resource "aws_ecs_task_definition" "sql_runner" {
 
 
 ###############################################
-# One-time ECS Task to Run SQL
+# One-time ECS Task to Run SQL (via null_resource)
 ###############################################
-resource "aws_ecs_task" "run_sql" {
-  cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.sql_runner.arn
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = var.ecs_subnet_ids
-    security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
-  }
-
+resource "null_resource" "run_sql" {
   depends_on = [
     aws_db_instance.node1,
-    aws_db_instance.node2
+    aws_db_instance.node2,
+    aws_ecs_task_definition.sql_runner
   ]
+
+  provisioner "local-exec" {
+    command = <<EOT
+aws ecs run-task \
+  --cluster ${aws_ecs_cluster.this.name} \
+  --task-definition ${aws_ecs_task_definition.sql_runner.family} \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[${join(",", var.ecs_subnet_ids)}],securityGroups=[${aws_security_group.ecs.id}],assignPublicIp=DISABLED}"
+EOT
+  }
 }
 
 ###############################################
