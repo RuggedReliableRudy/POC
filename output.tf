@@ -1,7 +1,2 @@
-output "node1_endpoint" {
-  value = aws_db_instance.node1.address
-}
-
-output "node2_endpoint" {
-  value = aws_db_instance.node2.address
-}
+ecs_subnet_ids = module.network.ecs_private_subnets
+db_subnet_ids  = module.network.rds_private_subnets
