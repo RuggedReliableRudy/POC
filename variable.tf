@@ -4,25 +4,18 @@
 
 variable "vpc_id" {
   type    = string
-  default = "vpc-0faf5f1fb582102a6"
+  description = "VPC where ECS and RDS will be deployed"
 }
 
 variable "ecs_subnet_ids" {
   type = list(string)
-  default = [
-    "subnet-0d8ee0c3b94df5735",
-    "subnet-0d2dc9c4e190e15ae"
-  ]
+  description = "Subnets used by ECS tasks and also RDS"
 }
 
-variable "rds_subnet_ids" {
-  type = list(string)
-  description = "Private subnets for RDS cluster"
-}
-
+# RDS subnet group uses the same subnets as ECS
 variable "db_subnet_ids" {
   type = list(string)
-  description = "List of subnet IDs for the RDS subnet group"
+  description = "Subnets for the RDS DB subnet group (same as ECS subnets)"
 }
 
 # -------------------------
