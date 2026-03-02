@@ -21,11 +21,15 @@ data "aws_vpc" "this" {
 }
 
 ###############################################
-# DB Subnet Group (existing)
+# DB Subnet Group (Terraform-managed)
 ###############################################
 resource "aws_db_subnet_group" "rds" {
   name       = "project-accumulator-subnet-group"
   subnet_ids = var.db_subnet_ids
+
+  tags = {
+    Name = "project-accumulator-subnet-group"
+  }
 }
 
 ###############################################
@@ -36,7 +40,6 @@ resource "aws_security_group" "db" {
   vpc_id = var.vpc_id
 }
 
-# DB <-> DB replication
 resource "aws_security_group_rule" "db_bidirectional" {
   type                     = "ingress"
   from_port                = 5430
@@ -51,7 +54,6 @@ resource "aws_security_group" "ecs" {
   vpc_id = var.vpc_id
 }
 
-# ECS -> DB
 resource "aws_security_group_rule" "ecs_to_db" {
   type                     = "ingress"
   from_port                = 5430
@@ -110,7 +112,7 @@ resource "aws_db_instance" "node1" {
   port                    = 5430
   parameter_group_name    = aws_db_parameter_group.pgactive.name
   vpc_security_group_ids  = [aws_security_group.db.id]
-  db_subnet_group_name    = data.aws_db_subnet_group.rds.name
+  db_subnet_group_name    = aws_db_subnet_group.rds.name
   skip_final_snapshot     = true
 }
 
@@ -129,7 +131,7 @@ resource "aws_db_instance" "node2" {
   port                    = 5430
   parameter_group_name    = aws_db_parameter_group.pgactive.name
   vpc_security_group_ids  = [aws_security_group.db.id]
-  db_subnet_group_name    = data.aws_db_subnet_group.rds.name
+  db_subnet_group_name    = aws_db_subnet_group.rds.name
   skip_final_snapshot     = true
 }
 
@@ -249,7 +251,6 @@ resource "aws_ecs_task_definition" "sql_runner" {
     }
   ])
 }
-
 
 ###############################################
 # One-time ECS Task to Run SQL (via null_resource)
