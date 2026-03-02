@@ -1,16 +1,17 @@
-project-accumulator/
-├── docker/
-│   ├── Dockerfile
-│   └── CpeLoad-0.1.jar   # <-- place your JAR here
+repo-root/
+│
+├── cloudformation/
+│   └── iam-roles.yaml
 │
 ├── terraform/
-│   ├── backend.tf
-│   ├── providers.tf
-│   ├── variables.tf
 │   ├── main.tf
+│   ├── variables.tf
 │   ├── outputs.tf
+│   └── ...
+│
+├── docker/
+│   └── Dockerfile
 │
 └── .github/
     └── workflows/
-        ├── build-push.yml
-        └── terraform.yml
+        └── deploy.yml
