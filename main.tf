@@ -298,7 +298,7 @@ resource "aws_ecs_service" "cpeload" {
   force_new_deployment = true
 
   network_configuration {
-    subnets          = [
+    subnets = [
       aws_subnet.private_a.id,
       aws_subnet.private_b.id
     ]
