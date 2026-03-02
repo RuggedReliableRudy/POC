@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: IAM roles for ECS tasks with VAEC permissions boundary
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: cpeload
+    Description: Project prefix for IAM role names
+
+Resources:
+
+  ###############################################
+  # ECS Task Execution Role
+  ###############################################
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub project-${Project-accumulator}-ecs-task-execution-role
+      Path: /project/
+      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  ###############################################
+  # ECS Task Role (Application Role)
+  ###############################################
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub project-${Project-accumulator}-ecs-task-role
+      Path: /project/
+      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub project-${Project-acumulator}-ecs-s3-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - arn:aws-us-gov:s3:::project-accumulator-glue-job
+                  - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
+
+  ###############################################
+  # SQL Runner Role
+  ###############################################
+  SQLRunnerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub project-${Project-accumulator}-sql-runner-role
+      Path: /project/
+      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub project-${Project-accumulator}-sql-s3-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
+Outputs:
+  ECSTaskExecutionRoleArn:
+    Value: !GetAtt ECSTaskExecutionRole.Arn
+
+  ECSTaskRoleArn:
+    Value: !GetAtt ECSTaskRole.Arn
+
+  SQLRunnerRoleArn:
+    Value: !GetAtt SQLRunnerRole.Arn
