@@ -4,7 +4,7 @@ Description: IAM roles for ECS tasks with VAEC permissions boundary
 Parameters:
   ProjectName:
     Type: String
-    Default: cpeload
+    Default: projectAccumulator
     Description: Project prefix for IAM role names
 
 Resources:
