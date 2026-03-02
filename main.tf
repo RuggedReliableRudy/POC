@@ -21,11 +21,14 @@ data "aws_vpc" "this" {
 }
 
 ###############################################
-# DB Subnet Group (Terraform-managed)
+# DB Subnet Group (uses Terraform-created private subnets)
 ###############################################
 resource "aws_db_subnet_group" "rds" {
   name       = "project-accumulator-subnet-group"
-  subnet_ids = var.db_subnet_ids
+  subnet_ids = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id
+  ]
 
   tags = {
     Name = "project-accumulator-subnet-group"
@@ -258,7 +261,7 @@ resource "aws_ecs_task_definition" "sql_runner" {
 }
 
 ###############################################
-# One-time ECS Task to Run SQL (via null_resource)
+# One-time ECS Task to Run SQL
 ###############################################
 resource "null_resource" "run_sql" {
   depends_on = [
@@ -273,7 +276,7 @@ aws ecs run-task \
   --cluster ${aws_ecs_cluster.this.name} \
   --task-definition ${aws_ecs_task_definition.sql_runner.family} \
   --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[${join(",", var.ecs_subnet_ids)}],securityGroups=[${aws_security_group.ecs.id}],assignPublicIp=DISABLED}"
+  --network-configuration "awsvpcConfiguration={subnets=[${aws_subnet.private_a.id},${aws_subnet.private_b.id}],securityGroups=[${aws_security_group.ecs.id}],assignPublicIp=DISABLED}"
 EOT
   }
 }
@@ -295,7 +298,10 @@ resource "aws_ecs_service" "cpeload" {
   force_new_deployment = true
 
   network_configuration {
-    subnets          = var.ecs_subnet_ids
+    subnets          = [
+      aws_subnet.private_a.id,
+      aws_subnet.private_b.id
+    ]
     security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = false
   }
