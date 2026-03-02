@@ -67,42 +67,15 @@ resource "aws_security_group_rule" "ecs_to_db" {
 }
 
 ###############################################
-# Parameter Group for Logical Replication
+# Parameter Group (GovCloud PG15-compatible)
 ###############################################
 resource "aws_db_parameter_group" "pgactive" {
   name        = "pgactive-params"
   family      = "postgres15"
-  description = "Parameter group for pgactive active-active replication"
+  description = "GovCloud-compatible parameter group for PostgreSQL 15"
 
-  parameter {
-    name         = "wal_level"
-    value        = "logical"
-    apply_method = "pending-reboot"
-  }
-
-  parameter {
-    name         = "max_replication_slots"
-    value        = "10"
-    apply_method = "pending-reboot"
-  }
-
-  parameter {
-    name         = "max_wal_senders"
-    value        = "10"
-    apply_method = "pending-reboot"
-  }
-
-  parameter {
-    name         = "track_commit_timestamp"
-    value        = "on"
-    apply_method = "pending-reboot"
-  }
-
-  parameter {
-    name         = "rds.logical_replication"
-    value        = "1"
-    apply_method = "pending-reboot"
-  }
+  # GovCloud PG15 does NOT allow logical replication parameters.
+  # Only safe parameters may be added here.
 }
 
 ###############################################
