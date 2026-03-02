@@ -15,7 +15,7 @@ Resources:
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${Project-accumulator}-ecs-task-execution-role
+      RoleName: !Sub project-${ProjectName}-ecs-task-execution-role
       Path: /project/
       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
       AssumeRolePolicyDocument:
@@ -34,7 +34,7 @@ Resources:
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${Project-accumulator}-ecs-task-role
+      RoleName: !Sub project-${ProjectName}-ecs-task-role
       Path: /project/
       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
       AssumeRolePolicyDocument:
@@ -45,7 +45,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: !Sub project-${Project-acumulator}-ecs-s3-access
+        - PolicyName: !Sub project-${ProjectName}-ecs-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -63,7 +63,7 @@ Resources:
   SQLRunnerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${Project-accumulator}-sql-runner-role
+      RoleName: !Sub project-${ProjectName}-sql-runner-role
       Path: /project/
       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
       AssumeRolePolicyDocument:
@@ -74,7 +74,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: !Sub project-${Project-accumulator}-sql-s3-access
+        - PolicyName: !Sub project-${ProjectName}-sql-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -83,6 +83,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
+
 Outputs:
   ECSTaskExecutionRoleArn:
     Value: !GetAtt ECSTaskExecutionRole.Arn
