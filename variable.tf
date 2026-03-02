@@ -7,8 +7,7 @@ variable "vpc_id" {
   description = "Existing VPC where ECS and RDS will be deployed"
 }
 
-# These are no longer provided by tfvars.
-# They are populated inside main.tf using Terraform-created subnets.
+# These are populated inside main.tf using Terraform-created subnets.
 variable "ecs_subnet_ids" {
   type        = list(string)
   description = "Private subnets for ECS tasks (populated from Terraform-created subnets)"
