@@ -1,9 +1,9 @@
 ecs_subnet_ids = [
-  "subnet-073c4bbb49b7bc16d",
-  "subnet-0bb2b836c236b7eb4"
+  aws_subnet.private_a.id,
+  aws_subnet.private_b.id
 ]
 
 db_subnet_ids = [
-  "subnet-073c4bbb49b7bc16d",
-  "subnet-0bb2b836c236b7eb4"
+  aws_subnet.private_a.id,
+  aws_subnet.private_b.id
 ]
