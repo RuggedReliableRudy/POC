@@ -1,6 +1,6 @@
-# -------------------------
+###############################################
 # Secrets Lookup
-# -------------------------
+###############################################
 data "aws_secretsmanager_secret" "db_secret" {
   name = "accumulator"
 }
@@ -13,29 +13,29 @@ locals {
   db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)
 }
 
-# -------------------------
+###############################################
 # VPC
-# -------------------------
+###############################################
 data "aws_vpc" "this" {
   id = var.vpc_id
 }
 
-# -------------------------
+###############################################
 # DB Subnet Group (existing)
-# -------------------------
+###############################################
 data "aws_db_subnet_group" "rds" {
   name = "default-vpc-0bbb67cf591eb840c2-new-dev"
 }
 
-# -------------------------
+###############################################
 # Security Groups
-# -------------------------
+###############################################
 resource "aws_security_group" "db" {
   name   = "pgactive-db-sg"
   vpc_id = var.vpc_id
 }
 
-# DB <-> DB (pgactive replication)
+# DB <-> DB replication
 resource "aws_security_group_rule" "db_bidirectional" {
   type                     = "ingress"
   from_port                = 5430
@@ -60,9 +60,9 @@ resource "aws_security_group_rule" "ecs_to_db" {
   source_security_group_id = aws_security_group.ecs.id
 }
 
-# -------------------------
-# Parameter Group for Logical Replication (pgactive)
-# -------------------------
+###############################################
+# Parameter Group for Logical Replication
+###############################################
 resource "aws_db_parameter_group" "pgactive" {
   name        = "pgactive-params"
   family      = "postgres15"
@@ -77,9 +77,9 @@ resource "aws_db_parameter_group" "pgactive" {
   ]
 }
 
-# -------------------------
+###############################################
 # RDS PostgreSQL Node 1
-# -------------------------
+###############################################
 resource "aws_db_instance" "node1" {
   identifier              = "pgactive-node1"
   engine                  = "postgres"
@@ -96,9 +96,9 @@ resource "aws_db_instance" "node1" {
   skip_final_snapshot     = true
 }
 
-# -------------------------
+###############################################
 # RDS PostgreSQL Node 2
-# -------------------------
+###############################################
 resource "aws_db_instance" "node2" {
   identifier              = "pgactive-node2"
   engine                  = "postgres"
@@ -115,82 +115,31 @@ resource "aws_db_instance" "node2" {
   skip_final_snapshot     = true
 }
 
-# -------------------------
+###############################################
 # ECS Cluster
-# -------------------------
+###############################################
 resource "aws_ecs_cluster" "this" {
   name = "cpeload-cluster"
 }
 
-# -------------------------
-# IAM Roles
-# -------------------------
-data "aws_iam_policy_document" "ecs_task_assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
-    }
-  }
+###############################################
+# IAM Roles (from CloudFormation)
+###############################################
+data "aws_iam_role" "ecs_task_execution" {
+  name = "project-cpeload-ecs-task-execution-role"
 }
 
-resource "aws_iam_role" "ecs_task_execution" {
-  name               = "cpeload-ecs-task-execution-role"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
+data "aws_iam_role" "ecs_task" {
+  name = "project-cpeload-ecs-task-role"
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
-  role       = aws_iam_role.ecs_task_execution.name
-  policy_arn = "arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+data "aws_iam_role" "sql_runner" {
+  name = "project-cpeload-sql-runner-role"
 }
 
-resource "aws_iam_role" "ecs_task" {
-  name               = "cpeload-ecs-task-role"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
-}
-
-# S3 access for app + SQL runner
-resource "aws_s3_bucket" "sql_bucket" {
-  bucket = "accumulator-sql-bucket"
-}
-
-resource "aws_s3_object" "docmp_tables" {
-  bucket = aws_s3_bucket.sql_bucket.bucket
-  key    = "docmp_tables.sql"
-  source = "docmp_tables.sql"
-}
-
-data "aws_iam_policy_document" "ecs_task_policy" {
-  statement {
-    actions = ["s3:GetObject", "s3:ListBucket"]
-    resources = [
-      "arn:aws-us-gov:s3:::project-accumulator-glue-job",
-      "arn:aws-us-gov:s3:::project-accumulator-glue-job/*"
-    ]
-  }
-
-  statement {
-    actions = ["s3:GetObject"]
-    resources = [
-      "${aws_s3_bucket.sql_bucket.arn}/*"
-    ]
-  }
-}
-
-resource "aws_iam_policy" "ecs_task_policy" {
-  name   = "cpeload-ecs-task-policy"
-  policy = data.aws_iam_policy_document.ecs_task_policy.json
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_policy_attach" {
-  role       = aws_iam_role.ecs_task.name
-  policy_arn = aws_iam_policy.ecs_task_policy.arn
-}
-
-# -------------------------
+###############################################
 # ECS Task Definition (App)
-# -------------------------
+###############################################
 resource "aws_ecs_task_definition" "cpeload" {
   family                   = "cpeload-task"
   requires_compatibilities = ["FARGATE"]
@@ -198,8 +147,8 @@ resource "aws_ecs_task_definition" "cpeload" {
   cpu                      = "512"
   memory                   = "1024"
 
-  execution_role_arn = aws_iam_role.ecs_task_execution.arn
-  task_role_arn      = aws_iam_role.ecs_task.arn
+  execution_role_arn = data.aws_iam_role.ecs_task_execution.arn
+  task_role_arn      = data.aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([
     {
@@ -233,9 +182,76 @@ resource "aws_cloudwatch_log_group" "ecs" {
   retention_in_days = 14
 }
 
-# -------------------------
+###############################################
+# ECS Task Definition (SQL Runner)
+###############################################
+resource "aws_cloudwatch_log_group" "sql_runner" {
+  name              = "/ecs/sql-runner"
+  retention_in_days = 14
+}
+
+resource "aws_ecs_task_definition" "sql_runner" {
+  family                   = "sql-runner-task"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+
+  execution_role_arn = data.aws_iam_role.ecs_task_execution.arn
+  task_role_arn      = data.aws_iam_role.sql_runner.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "sql-runner"
+      image     = "postgres:15"
+      essential = true
+
+      command = [
+        "sh", "-c",
+        "aws s3 cp s3://project-accumulator-glue-job/docmp_tables.sql /tmp/docmp_tables.sql && " ..
+        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -c 'CREATE SCHEMA IF NOT EXISTS \"DOCMP\";' && " ..
+        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -f /tmp/docmp_tables.sql"
+      ]
+
+      environment = [
+        { name = "AWS_REGION", value = "us-gov-west-1" }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/sql-runner"
+          awslogs-region        = "us-gov-west-1"
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    }
+  ])
+}
+
+###############################################
+# One-time ECS Task to Run SQL
+###############################################
+resource "aws_ecs_task" "run_sql" {
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.sql_runner.arn
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.ecs_subnet_ids
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = false
+  }
+
+  depends_on = [
+    aws_db_instance.node1,
+    aws_db_instance.node2
+  ]
+}
+
+###############################################
 # ECS Service (App)
-# -------------------------
+###############################################
 resource "aws_ecs_service" "cpeload" {
   name            = "cpeload-service"
   cluster         = aws_ecs_cluster.this.id
@@ -260,77 +276,9 @@ resource "aws_ecs_service" "cpeload" {
   ]
 }
 
-# -------------------------
-# ECS Task Definition (SQL Runner)
-# - Creates DOCMP schema and runs docmp_tables.sql on Node 1
-# -------------------------
-resource "aws_cloudwatch_log_group" "sql_runner" {
-  name              = "/ecs/sql-runner"
-  retention_in_days = 14
-}
-
-resource "aws_ecs_task_definition" "sql_runner" {
-  family                   = "sql-runner-task"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-
-  execution_role_arn = aws_iam_role.ecs_task_execution.arn
-  task_role_arn      = aws_iam_role.ecs_task.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = "sql-runner"
-      image     = "postgres:15"
-      essential = true
-
-      command = [
-        "sh", "-c",
-        "aws s3 cp s3://${aws_s3_bucket.sql_bucket.bucket}/docmp_tables.sql /tmp/docmp_tables.sql && " ..
-        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -c 'CREATE SCHEMA IF NOT EXISTS \"DOCMP\";' && " ..
-        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -f /tmp/docmp_tables.sql"
-      ]
-
-      environment = [
-        { name = "AWS_REGION", value = "us-gov-west-1" }
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/sql-runner"
-          awslogs-region        = "us-gov-west-1"
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
-}
-
-# -------------------------
-# One-time ECS Task to Run SQL
-# -------------------------
-resource "aws_ecs_task" "run_sql" {
-  cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.sql_runner.arn
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = var.ecs_subnet_ids
-    security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
-  }
-
-  depends_on = [
-    aws_db_instance.node1,
-    aws_db_instance.node2
-  ]
-}
-
-# -------------------------
+###############################################
 # Outputs
-# -------------------------
+###############################################
 output "node1_endpoint" {
   value = aws_db_instance.node1.address
 }
