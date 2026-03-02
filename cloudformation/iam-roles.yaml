@@ -5,17 +5,17 @@ Parameters:
   ProjectName:
     Type: String
     Default: projectaccumulator
-    Description: Project prefix for IAM role names
+    Description: Project prefix for GitHub Actions role only
 
 Resources:
 
   ###############################################
-  # ECS Task Execution Role
+  # ECS Task Execution Role (Terraform expects exact name)
   ###############################################
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${ProjectName}-ecs-task-execution-role
+      RoleName: project-cpeload-ecs-task-execution-role
       Path: /project/
       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
       AssumeRolePolicyDocument:
@@ -34,7 +34,7 @@ Resources:
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${ProjectName}-ecs-task-role
+      RoleName: project-cpeload-ecs-task-role
       Path: /project/
       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
       AssumeRolePolicyDocument:
@@ -45,7 +45,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: !Sub project-${ProjectName}-ecs-s3-access
+        - PolicyName: project-cpeload-ecs-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -63,7 +63,7 @@ Resources:
   SQLRunnerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${ProjectName}-sql-runner-role
+      RoleName: project-cpeload-sql-runner-role
       Path: /project/
       PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
       AssumeRolePolicyDocument:
@@ -74,7 +74,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: !Sub project-${ProjectName}-sql-s3-access
+        - PolicyName: project-cpeload-sql-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -85,7 +85,7 @@ Resources:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
   ###############################################
-  # GitHub Actions Role (UPDATED WITH EC2/VPC PERMISSIONS)
+  # GitHub Actions Role (with full EC2/VPC permissions)
   ###############################################
   GitHubActionsRole:
     Type: AWS::IAM::Role
@@ -101,25 +101,12 @@ Resources:
               AWS: "*"
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: !Sub project-${ProjectName}-github-actions-vpc-access
+        - PolicyName: project-github-actions-vpc-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action:
-                  - ec2:CreateInternetGateway
-                  - ec2:AttachInternetGateway
-                  - ec2:CreateSubnet
-                  - ec2:DeleteSubnet
-                  - ec2:CreateRouteTable
-                  - ec2:CreateRoute
-                  - ec2:AssociateRouteTable
-                  - ec2:AllocateAddress
-                  - ec2:ReleaseAddress
-                  - ec2:CreateNatGateway
-                  - ec2:DeleteNatGateway
-                  - ec2:CreateTags
-                  - ec2:Describe*
+                Action: "ec2:*"
                 Resource: "*"
 
 Outputs:
