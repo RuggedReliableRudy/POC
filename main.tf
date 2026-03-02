@@ -294,7 +294,7 @@ resource "aws_ecs_service" "cpeload" {
   }
 
   depends_on = [
-    aws_ecs_task.run_sql
+    null_resource.run_sql
   ]
 }
 
