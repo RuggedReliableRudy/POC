@@ -24,7 +24,7 @@ data "aws_vpc" "this" {
 # DB Subnet Group (existing)
 ###############################################
 data "aws_db_subnet_group" "rds" {
-  name = "default-vpc-0bbb67cf591eb840c2-new-dev"
+  name = "default"
 }
 
 ###############################################
