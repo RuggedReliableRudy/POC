@@ -18,28 +18,32 @@ repo-root/
 
 
 
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:CreateInternetGateway",
-        "ec2:AttachInternetGateway",
-        "ec2:CreateSubnet",
-        "ec2:DeleteSubnet",
-        "ec2:CreateRouteTable",
-        "ec2:CreateRoute",
-        "ec2:AssociateRouteTable",
-        "ec2:AllocateAddress",
-        "ec2:ReleaseAddress",
-        "ec2:CreateNatGateway",
-        "ec2:DeleteNatGateway",
-        "ec2:CreateTags",
-        "ec2:Describe*"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
+╷
+│ Error: reading IAM Role (project-cpeload-sql-runner-role): couldn't find resource
+│
+│   with data.aws_iam_role.sql_runner,
+│   on main.tf line 137, in data "aws_iam_role" "sql_runner":
+│ 137: data "aws_iam_role" "sql_runner" {
+│
+╵
+Error: Terraform exited with code 1.
+Error: Process completed with exit code 1.
+ 
+╷
+│ Error: reading IAM Role (project-cpeload-ecs-task-execution-role): couldn't find resource
+│
+│   with data.aws_iam_role.ecs_task_execution,
+│   on main.tf line 129, in data "aws_iam_role" "ecs_task_execution":
+│ 129: data "aws_iam_role" "ecs_task_execution" {
+│
+╵
+╷
+│ Error: reading IAM Role (project-cpeload-ecs-task-role): couldn't find resource
+│
+│   with data.aws_iam_role.ecs_task,
+│   on main.tf line 133, in data "aws_iam_role" "ecs_task":
+│ 133: data "aws_iam_role" "ecs_task" {
+│
+╵
+ 
 
