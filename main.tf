@@ -68,13 +68,30 @@ resource "aws_db_parameter_group" "pgactive" {
   family      = "postgres15"
   description = "Parameter group for pgactive active-active replication"
 
-  parameters = [
-    { name = "wal_level",               value = "logical" },
-    { name = "max_replication_slots",   value = "10" },
-    { name = "max_wal_senders",         value = "10" },
-    { name = "track_commit_timestamp",  value = "on" },
-    { name = "rds.logical_replication", value = "1" }
-  ]
+  parameter {
+    name  = "wal_level"
+    value = "logical"
+  }
+
+  parameter {
+    name  = "max_replication_slots"
+    value = "10"
+  }
+
+  parameter {
+    name  = "max_wal_senders"
+    value = "10"
+  }
+
+  parameter {
+    name  = "track_commit_timestamp"
+    value = "on"
+  }
+
+  parameter {
+    name  = "rds.logical_replication"
+    value = "1"
+  }
 }
 
 ###############################################
