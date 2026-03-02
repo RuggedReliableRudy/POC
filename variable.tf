@@ -4,19 +4,19 @@
 
 variable "vpc_id" {
   type        = string
-  description = "VPC where ECS and RDS will be deployed"
+  description = "Existing VPC where ECS and RDS will be deployed"
 }
 
-# ECS tasks run in private subnets
+# These are no longer provided by tfvars.
+# They are populated inside main.tf using Terraform-created subnets.
 variable "ecs_subnet_ids" {
   type        = list(string)
-  description = "Private subnets for ECS tasks"
+  description = "Private subnets for ECS tasks (populated from Terraform-created subnets)"
 }
 
-# RDS requires private subnets (must be different AZs)
 variable "db_subnet_ids" {
   type        = list(string)
-  description = "Private subnets for the RDS DB subnet group"
+  description = "Private subnets for the RDS DB subnet group (populated from Terraform-created subnets)"
 }
 
 # -------------------------
