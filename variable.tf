@@ -20,6 +20,11 @@ variable "rds_subnet_ids" {
   description = "Private subnets for RDS cluster"
 }
 
+variable "db_subnet_ids" {
+  type = list(string)
+  description = "List of subnet IDs for the RDS subnet group"
+}
+
 # -------------------------
 # ECS Deployment
 # -------------------------
