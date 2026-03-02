@@ -3,19 +3,20 @@
 # -------------------------
 
 variable "vpc_id" {
-  type    = string
+  type        = string
   description = "VPC where ECS and RDS will be deployed"
 }
 
+# ECS tasks run in private subnets
 variable "ecs_subnet_ids" {
-  type = list(string)
-  description = "Subnets used by ECS tasks and also RDS"
+  type        = list(string)
+  description = "Private subnets for ECS tasks"
 }
 
-# RDS subnet group uses the same subnets as ECS
+# RDS requires private subnets (must be different AZs)
 variable "db_subnet_ids" {
-  type = list(string)
-  description = "Subnets for the RDS DB subnet group (same as ECS subnets)"
+  type        = list(string)
+  description = "Private subnets for the RDS DB subnet group"
 }
 
 # -------------------------
