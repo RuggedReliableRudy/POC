@@ -207,10 +207,13 @@ resource "aws_ecs_task_definition" "sql_runner" {
       essential = true
 
       command = [
-        "sh", "-c",
-        "aws s3 cp s3://project-accumulator-glue-job/docmp_tables.sql /tmp/docmp_tables.sql && " ..
-        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -c 'CREATE SCHEMA IF NOT EXISTS \"DOCMP\";' && " ..
-        "PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -f /tmp/docmp_tables.sql"
+        "sh",
+        "-c",
+        <<-EOF
+          aws s3 cp s3://project-accumulator-glue-job/docmp_tables.sql /tmp/docmp_tables.sql && \
+          PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -c 'CREATE SCHEMA IF NOT EXISTS "DOCMP";' && \
+          PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -f /tmp/docmp_tables.sql
+        EOF
       ]
 
       environment = [
@@ -228,6 +231,7 @@ resource "aws_ecs_task_definition" "sql_runner" {
     }
   ])
 }
+
 
 ###############################################
 # One-time ECS Task to Run SQL
