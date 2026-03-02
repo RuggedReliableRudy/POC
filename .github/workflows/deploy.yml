@@ -45,7 +45,7 @@ jobs:
           no-fail-on-empty-changeset: "1"
           capabilities: CAPABILITY_NAMED_IAM
           parameter-overrides: |
-            ProjectName=cpeload
+            ProjectName=projectaccumulator
 
       # ----------------------------------------------------
       # Login to Amazon ECR
