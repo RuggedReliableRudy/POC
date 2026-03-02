@@ -72,28 +72,33 @@ resource "aws_db_parameter_group" "pgactive" {
   description = "Parameter group for pgactive active-active replication"
 
   parameter {
-    name  = "wal_level"
-    value = "logical"
+    name         = "wal_level"
+    value        = "logical"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "max_replication_slots"
-    value = "10"
+    name         = "max_replication_slots"
+    value        = "10"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "max_wal_senders"
-    value = "10"
+    name         = "max_wal_senders"
+    value        = "10"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "track_commit_timestamp"
-    value = "on"
+    name         = "track_commit_timestamp"
+    value        = "on"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "rds.logical_replication"
-    value = "1"
+    name         = "rds.logical_replication"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 }
 
