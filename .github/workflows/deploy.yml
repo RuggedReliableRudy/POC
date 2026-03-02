@@ -2,7 +2,7 @@ name: Build and Deploy CpeLoad Infrastructure
 
 on:
   push:
-    branches: [ "" ]
+    branches: [ "main" ]
 
   workflow_dispatch:
     inputs:
@@ -34,11 +34,27 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
 
+      # ----------------------------------------------------
+      # Deploy IAM Roles via CloudFormation
+      # ----------------------------------------------------
+      - name: Deploy IAM Roles (CloudFormation)
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: project-cpeload-iam
+          template: cloudformation/iam-roles.yaml
+          no-fail-on-empty-changeset: "1"
+          capabilities: CAPABILITY_NAMED_IAM
+          parameter-overrides: |
+            ProjectName=cpeload
+
+      # ----------------------------------------------------
+      # Login to Amazon ECR
+      # ----------------------------------------------------
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
       # ----------------------------------------------------
-      # Ensure ECR repo exists
+      # Ensure ECR repository exists
       # ----------------------------------------------------
       - name: Ensure ECR repository exists
         run: |
@@ -54,10 +70,8 @@ jobs:
         run: |
           if [ -z "${{ github.event.inputs.image_tag }}" ]; then
             TAG=${GITHUB_SHA}
-            echo "Using build SHA: $TAG"
           else
             TAG="${{ github.event.inputs.image_tag }}"
-            echo "Using provided tag: $TAG"
           fi
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
@@ -96,9 +110,6 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
       - name: Terraform Fmt
         run: terraform fmt -check
 
@@ -111,21 +122,11 @@ jobs:
       - name: Terraform Plan
         run: |
           terraform plan \
-          -var="ecr_uri=${ECR_URI}" \
-          -var="image_tag=${IMAGE_TAG}"
+            -var="ecr_uri=${ECR_URI}" \
+            -var="image_tag=${IMAGE_TAG}"
 
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve \
-          -var="ecr_uri=${ECR_URI}" \
-          -var="image_tag=${IMAGE_TAG}"
-
-
-      # ----------------------------------------------------
-      # Run DB Migration AFTER DB is deployed
-      # ----------------------------------------------------
-      - name: Run DB Migration (docmp_tables.sql)
-        run: |
-          echo "Running docmp_tables.sql..."
-          psql "host=${{ secrets.DB_HOST }} port=5430 user=${{ secrets.DB_USER }} password=${{ secrets.DB_PASSWORD }} dbname=${{ secrets.DB_NAME }}" \
-            -f Project-Accumulator/docmp_tables.sql
+            -var="ecr_uri=${ECR_URI}" \
+            -var="image_tag=${IMAGE_TAG}"
