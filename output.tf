@@ -8,17 +8,18 @@ db_subnet_ids  = module.network.rds_private_subnets
     {
       "Effect": "Allow",
       "Principal": {
-        "Federated": "arn:aws-us-gov:iam::018743596699:oidc-provider/va.ghe.com/_services/token"
+        "Federated": "arn:aws-us-gov:iam::018743596699:oidc-provider/token.actions.va.ghe.com"
       },
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "va.ghe.com/_services/token:aud": "sts.amazonaws.com"
+          "token.actions.va.ghe.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "va.ghe.com/_services/token:sub": "repo:software/Project-Accumulator:*"
+          "token.actions.va.ghe.com:sub": "repo:software/Project-Accumulator:*"
         }
       }
     }
   ]
 }
+
