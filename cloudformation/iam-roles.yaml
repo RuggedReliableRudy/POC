@@ -17,7 +17,7 @@ Resources:
     Properties:
       RoleName: project-cpeload-ecs-task-execution-role
       Path: /project/
-      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -36,7 +36,7 @@ Resources:
     Properties:
       RoleName: project-cpeload-ecs-task-role
       Path: /project/
-      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -65,7 +65,7 @@ Resources:
     Properties:
       RoleName: project-cpeload-sql-runner-role
       Path: /project/
-      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -92,7 +92,7 @@ Resources:
     Properties:
       RoleName: !Sub project-${ProjectName}-github-actions-iam-role
       Path: /project/
-      PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin
+      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
