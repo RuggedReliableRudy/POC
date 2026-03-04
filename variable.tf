@@ -1,19 +1,27 @@
 variable "vpc_id" {
   type        = string
-  description = "Existing VPC where ECS and RDS will be deployed"
+  description = "Existing VPC ID"
 }
 
-variable "desired_count" {
-  type    = number
-  default = 2
+variable "private_subnet_ids" {
+  type        = list(string)
+  description = "List of existing private subnet IDs"
+}
+
+variable "db_subnet_group_name" {
+  type        = string
+  description = "Existing DB subnet group name"
 }
 
 variable "ecr_uri" {
   type        = string
-  description = "ECR repository URI passed from GitHub Actions"
 }
 
 variable "image_tag" {
   type        = string
-  description = "Docker image tag passed from GitHub Actions"
+}
+
+variable "desired_count" {
+  type        = number
+  default     = 1
 }
