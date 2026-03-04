@@ -21,14 +21,6 @@ data "aws_vpc" "this" {
 }
 
 ###############################################
-# Subnets (existing)
-###############################################
-data "aws_subnet" "private" {
-  for_each = toset(var.private_subnet_ids)
-  id       = each.value
-}
-
-###############################################
 # DB Subnet Group (existing)
 ###############################################
 data "aws_db_subnet_group" "rds" {
