@@ -16,23 +16,12 @@ repo-root/
     └── workflows/
         └── deploy.yml
 
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws-us-gov:iam::018743596699:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:ORG/Project-Accumulator:*"
-        }
-      }
-    }
-  ]
-}
+cd /opt/actions-runner
+curl -o actions-runner-linux-x64.tar.gz -L https://github.com/actions/runner/releases/latest/download/actions-runner-linux-x64.tar.gz
+tar xzf actions-runner-linux-x64.tar.gz
+
+
+./config.sh --url https://github.com/<org>/<repo> --token <runner-token>
+sudo ./svc.sh install
+sudo ./svc.sh start
+sudo ./svc.sh status
