@@ -14,25 +14,25 @@ locals {
 }
 
 ###############################################
-# VPC
+# VPC (existing)
 ###############################################
 data "aws_vpc" "this" {
   id = var.vpc_id
 }
 
 ###############################################
-# DB Subnet Group (uses Terraform-created private subnets)
+# Subnets (existing)
 ###############################################
-resource "aws_db_subnet_group" "rds" {
-  name       = "project-accumulator-subnet-group"
-  subnet_ids = [
-    aws_subnet.private_a.id,
-    aws_subnet.private_b.id
-  ]
+data "aws_subnet" "private" {
+  for_each = toset(var.private_subnet_ids)
+  id       = each.value
+}
 
-  tags = {
-    Name = "project-accumulator-subnet-group"
-  }
+###############################################
+# DB Subnet Group (existing)
+###############################################
+data "aws_db_subnet_group" "rds" {
+  name = var.db_subnet_group_name
 }
 
 ###############################################
@@ -73,9 +73,6 @@ resource "aws_db_parameter_group" "pgactive" {
   name        = "pgactive-params"
   family      = "postgres15"
   description = "GovCloud-compatible parameter group for PostgreSQL 15"
-
-  # GovCloud PG15 does NOT allow logical replication parameters.
-  # Only safe parameters may be added here.
 }
 
 ###############################################
@@ -93,7 +90,7 @@ resource "aws_db_instance" "node1" {
   port                    = 5430
   parameter_group_name    = aws_db_parameter_group.pgactive.name
   vpc_security_group_ids  = [aws_security_group.db.id]
-  db_subnet_group_name    = aws_db_subnet_group.rds.name
+  db_subnet_group_name    = data.aws_db_subnet_group.rds.name
   skip_final_snapshot     = true
 }
 
@@ -112,7 +109,7 @@ resource "aws_db_instance" "node2" {
   port                    = 5430
   parameter_group_name    = aws_db_parameter_group.pgactive.name
   vpc_security_group_ids  = [aws_security_group.db.id]
-  db_subnet_group_name    = aws_db_subnet_group.rds.name
+  db_subnet_group_name    = data.aws_db_subnet_group.rds.name
   skip_final_snapshot     = true
 }
 
@@ -124,7 +121,7 @@ resource "aws_ecs_cluster" "this" {
 }
 
 ###############################################
-# IAM Roles (from CloudFormation)
+# IAM Roles (existing from CloudFormation)
 ###############################################
 data "aws_iam_role" "ecs_task_execution" {
   name = "project-cpeload-ecs-task-execution-role"
@@ -234,27 +231,6 @@ resource "aws_ecs_task_definition" "sql_runner" {
 }
 
 ###############################################
-# One-time ECS Task to Run SQL
-###############################################
-resource "null_resource" "run_sql" {
-  depends_on = [
-    aws_db_instance.node1,
-    aws_db_instance.node2,
-    aws_ecs_task_definition.sql_runner
-  ]
-
-  provisioner "local-exec" {
-    command = <<EOT
-aws ecs run-task \
-  --cluster ${aws_ecs_cluster.this.name} \
-  --task-definition ${aws_ecs_task_definition.sql_runner.family} \
-  --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[${aws_subnet.private_a.id},${aws_subnet.private_b.id}],securityGroups=[${aws_security_group.ecs.id}],assignPublicIp=DISABLED}"
-EOT
-  }
-}
-
-###############################################
 # ECS Service (App)
 ###############################################
 resource "aws_ecs_service" "cpeload" {
@@ -264,24 +240,11 @@ resource "aws_ecs_service" "cpeload" {
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
-  deployment_controller {
-    type = "ECS"
-  }
-
-  force_new_deployment = true
-
   network_configuration {
-    subnets = [
-      aws_subnet.private_a.id,
-      aws_subnet.private_b.id
-    ]
-    security_groups  = [aws_security_group.ecs.id]
+    subnets         = var.private_subnet_ids
+    security_groups = [aws_security_group.ecs.id]
     assign_public_ip = false
   }
-
-  depends_on = [
-    null_resource.run_sql
-  ]
 }
 
 ###############################################
