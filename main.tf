@@ -35,6 +35,13 @@ data "aws_db_parameter_group" "pgactive" {
 }
 
 ###############################################
+# Option Group (existing)
+# NOTE: Terraform does NOT support a data source for option groups.
+# We reference the existing option group directly by name.
+###############################################
+# option_group_name = "default:postgres-17"
+
+###############################################
 # KMS Key for RDS Encryption
 ###############################################
 resource "aws_kms_key" "rds" {
