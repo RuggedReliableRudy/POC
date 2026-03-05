@@ -28,6 +28,20 @@ data "aws_db_subnet_group" "rds" {
 }
 
 ###############################################
+# Parameter Group (existing)
+###############################################
+data "aws_db_parameter_group" "pgactive" {
+  name = "accumulator-postgres17"
+}
+
+###############################################
+# Option Group (existing)
+###############################################
+data "aws_db_option_group" "pgactive_options" {
+  name = "default:postgres-17"
+}
+
+###############################################
 # KMS Key for RDS Encryption
 ###############################################
 resource "aws_kms_key" "rds" {
@@ -99,25 +113,6 @@ resource "aws_security_group_rule" "ecs_to_db" {
 }
 
 ###############################################
-# Parameter Group (PostgreSQL 17)
-###############################################
-resource "aws_db_parameter_group" "pgactive" {
-  name        = "accumulator-postgres17"
-  family      = "postgres17"
-  description = "Parameter group for PostgreSQL 17"
-}
-
-###############################################
-# Option Group (PostgreSQL 17)
-###############################################
-resource "aws_db_option_group" "pgactive_options" {
-  name                     = "accumulator-postgres17-options"
-  engine_name              = "postgres"
-  major_engine_version     = "17"
-  option_group_description = "Option group for PostgreSQL 17"
-}
-
-###############################################
 # RDS PostgreSQL Node 1 (Encrypted, PG 17.6)
 ###############################################
 resource "aws_db_instance" "node1" {
@@ -135,8 +130,8 @@ resource "aws_db_instance" "node1" {
   password                = local.db_creds.password
   port                    = 5430
 
-  parameter_group_name    = aws_db_parameter_group.pgactive.name
-  option_group_name       = "default:postgres-17"
+  parameter_group_name    = data.aws_db_parameter_group.pgactive.name
+  option_group_name       = data.aws_db_option_group.pgactive_options.name
 
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
@@ -162,8 +157,8 @@ resource "aws_db_instance" "node2" {
   password                = local.db_creds.password
   port                    = 5430
 
-  parameter_group_name    = aws_db_parameter_group.pgactive.name
-  option_group_name       = "default:postgres-17"
+  parameter_group_name    = data.aws_db_parameter_group.pgactive.name
+  option_group_name       = data.aws_db_option_group.pgactive_options.name
 
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
