@@ -35,13 +35,6 @@ data "aws_db_parameter_group" "pgactive" {
 }
 
 ###############################################
-# Option Group (existing)
-###############################################
-data "aws_db_option_group" "pgactive_options" {
-  name = "default:postgres-17"
-}
-
-###############################################
 # KMS Key for RDS Encryption
 ###############################################
 resource "aws_kms_key" "rds" {
@@ -131,7 +124,7 @@ resource "aws_db_instance" "node1" {
   port                    = 5430
 
   parameter_group_name    = data.aws_db_parameter_group.pgactive.name
-  option_group_name       = data.aws_db_option_group.pgactive_options.name
+  option_group_name       = "default:postgres-17"
 
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
@@ -158,7 +151,7 @@ resource "aws_db_instance" "node2" {
   port                    = 5430
 
   parameter_group_name    = data.aws_db_parameter_group.pgactive.name
-  option_group_name       = data.aws_db_option_group.pgactive_options.name
+  option_group_name       = "default:postgres-17"
 
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
