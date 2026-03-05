@@ -13,3 +13,5 @@ desired_count = 2
 
 ecr_uri   = "018743596699.dkr.ecr.us-gov-west-1.amazonaws.com/project-accumulator"
 image_tag = "latest"
+
+account_id = "018743596699"
