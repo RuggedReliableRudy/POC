@@ -28,6 +28,46 @@ data "aws_db_subnet_group" "rds" {
 }
 
 ###############################################
+# KMS Key for RDS Encryption
+###############################################
+resource "aws_kms_key" "rds" {
+  description         = "Customer-managed KMS key for RDS encryption"
+  enable_key_rotation = true
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EnableRootPermissions",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws-us-gov:iam::018743596699:root"
+      },
+      "Action": "kms:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowRDSUseOfKey",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "rds.amazonaws.com"
+      },
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:GenerateDataKey*",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+###############################################
 # Security Groups
 ###############################################
 resource "aws_security_group" "db" {
@@ -68,7 +108,7 @@ resource "aws_db_parameter_group" "pgactive" {
 }
 
 ###############################################
-# RDS PostgreSQL Node 1
+# RDS PostgreSQL Node 1 (Encrypted)
 ###############################################
 resource "aws_db_instance" "node1" {
   identifier              = "pgactive-node1"
@@ -76,18 +116,24 @@ resource "aws_db_instance" "node1" {
   engine_version          = "15.3"
   instance_class          = "db.m6g.large"
   allocated_storage       = 100
+
+  storage_encrypted       = true
+  kms_key_id              = aws_kms_key.rds.arn
+
   db_name                 = local.db_creds.name
   username                = local.db_creds.user
   password                = local.db_creds.password
   port                    = 5430
+
   parameter_group_name    = aws_db_parameter_group.pgactive.name
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
+
   skip_final_snapshot     = true
 }
 
 ###############################################
-# RDS PostgreSQL Node 2
+# RDS PostgreSQL Node 2 (Encrypted)
 ###############################################
 resource "aws_db_instance" "node2" {
   identifier              = "pgactive-node2"
@@ -95,13 +141,19 @@ resource "aws_db_instance" "node2" {
   engine_version          = "15.3"
   instance_class          = "db.m6g.large"
   allocated_storage       = 100
+
+  storage_encrypted       = true
+  kms_key_id              = aws_kms_key.rds.arn
+
   db_name                 = local.db_creds.name
   username                = local.db_creds.user
   password                = local.db_creds.password
   port                    = 5430
+
   parameter_group_name    = aws_db_parameter_group.pgactive.name
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
+
   skip_final_snapshot     = true
 }
 
@@ -237,15 +289,4 @@ resource "aws_ecs_service" "cpeload" {
     security_groups = [aws_security_group.ecs.id]
     assign_public_ip = false
   }
-}
-
-###############################################
-# Outputs
-###############################################
-output "node1_endpoint" {
-  value = aws_db_instance.node1.address
-}
-
-output "node2_endpoint" {
-  value = aws_db_instance.node2.address
 }
