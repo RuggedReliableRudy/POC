@@ -9,6 +9,9 @@ Parameters:
 
 Resources:
 
+  ###############################################
+  # ECS Task Execution Role
+  ###############################################
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -25,6 +28,9 @@ Resources:
       ManagedPolicyArns:
         - arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
+  ###############################################
+  # ECS Task Role
+  ###############################################
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
@@ -51,6 +57,9 @@ Resources:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
+  ###############################################
+  # SQL Runner Role
+  ###############################################
   SQLRunnerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -75,6 +84,9 @@ Resources:
                 Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
+  ###############################################
+  # GitHub Actions Role (Updated Trust Policy)
+  ###############################################
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -86,7 +98,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS: "*"
+              AWS: "arn:aws-us-gov:iam::018743596699:role/project/project-projectaccumulator-github-actions-iam-role"
             Action: sts:AssumeRole
       Policies:
         - PolicyName: pre-prod-accumulator-github-actions-vpc-access
