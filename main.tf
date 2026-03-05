@@ -102,18 +102,35 @@ resource "aws_security_group_rule" "ecs_to_db" {
 # Parameter Group (PostgreSQL 17)
 ###############################################
 resource "aws_db_parameter_group" "pgactive" {
-  name        = "pgactive-params"
+  name        = "accumulator-postgres17"
   family      = "postgres17"
-  description = "GovCloud-compatible parameter group for PostgreSQL 17"
+  description = "Parameter group for PostgreSQL 17"
 }
 
 ###############################################
-# RDS PostgreSQL Node 1 (Encrypted, PG17.5-R2)
+# Option Group (PostgreSQL 17)
+###############################################
+resource "aws_db_option_group" "pgactive" {
+  name                     = "accumulator-postgres17-options"
+  engine_name              = "postgres"
+  major_engine_version     = "17"
+  option_group_description = "Option group for PostgreSQL 17"
+
+  option {
+    option_name = "PGLOGICAL"
+    # Add additional options here if needed
+  }
+}
+# If you want the default option group instead:
+# option_group_name = "default:postgres-17"
+
+###############################################
+# RDS PostgreSQL Node 1 (Encrypted, PG 17.6)
 ###############################################
 resource "aws_db_instance" "node1" {
   identifier              = "pgactive-node1"
   engine                  = "postgres"
-  engine_version          = "17.5-R2"
+  engine_version          = "17.6"
   instance_class          = "db.m6g.large"
   allocated_storage       = 100
 
@@ -126,6 +143,8 @@ resource "aws_db_instance" "node1" {
   port                    = 5430
 
   parameter_group_name    = aws_db_parameter_group.pgactive.name
+  option_group_name       = "default:postgres-17"
+
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
 
@@ -133,12 +152,12 @@ resource "aws_db_instance" "node1" {
 }
 
 ###############################################
-# RDS PostgreSQL Node 2 (Encrypted, PG17.5-R2)
+# RDS PostgreSQL Node 2 (Encrypted, PG 17.6)
 ###############################################
 resource "aws_db_instance" "node2" {
   identifier              = "pgactive-node2"
   engine                  = "postgres"
-  engine_version          = "17.5-R2"
+  engine_version          = "17.6"
   instance_class          = "db.m6g.large"
   allocated_storage       = 100
 
@@ -151,6 +170,8 @@ resource "aws_db_instance" "node2" {
   port                    = 5430
 
   parameter_group_name    = aws_db_parameter_group.pgactive.name
+  option_group_name       = "default:postgres-17"
+
   vpc_security_group_ids  = [aws_security_group.db.id]
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
 
