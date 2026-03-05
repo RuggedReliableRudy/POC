@@ -10,12 +10,12 @@ Parameters:
 Resources:
 
   ###############################################
-  # ECS Task Execution Role
+  # ECS Task Execution Role (Shared with Dev)
   ###############################################
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: pre-prod-accumulator-ecs-task-execution-role
+      RoleName: project-cpeload-ecs-task-execution-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -29,12 +29,12 @@ Resources:
         - arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
   ###############################################
-  # ECS Task Role
+  # ECS Task Role (Shared with Dev)
   ###############################################
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: pre-prod-accumulator-ecs-task-role
+      RoleName: project-cpeload-ecs-task-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -45,7 +45,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: pre-prod-accumulator-ecs-s3-access
+        - PolicyName: project-cpeload-ecs-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -58,12 +58,12 @@ Resources:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
   ###############################################
-  # SQL Runner Role
+  # SQL Runner Role (Shared with Dev)
   ###############################################
   SQLRunnerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: pre-prod-accumulator-sql-runner-role
+      RoleName: project-cpeload-sql-runner-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -74,7 +74,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: pre-prod-accumulator-sql-s3-access
+        - PolicyName: project-cpeload-sql-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
