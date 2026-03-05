@@ -134,18 +134,18 @@ resource "aws_ecs_cluster" "this" {
 }
 
 ###############################################
-# IAM Roles (existing)
+# IAM Roles (shared with dev)
 ###############################################
 data "aws_iam_role" "ecs_task_execution" {
-  name = "pre-prod-accumulator-ecs-task-execution-role"
+  name = "project-cpeload-ecs-task-execution-role"
 }
 
 data "aws_iam_role" "ecs_task" {
-  name = "pre-prod-accumulator-ecs-task-role"
+  name = "project-cpeload-ecs-task-role"
 }
 
 data "aws_iam_role" "sql_runner" {
-  name = "pre-prod-accumulator-sql-runner-role"
+  name = "project-cpeload-sql-runner-role"
 }
 
 ###############################################
