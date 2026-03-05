@@ -42,7 +42,7 @@ resource "aws_kms_key" "rds" {
       "Sid": "EnableRootPermissions",
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws-us-gov:iam::018743596699:root"
+        "AWS": "arn:aws-us-gov:iam::${var.account_id}:root"
       },
       "Action": "kms:*",
       "Resource": "*"
@@ -110,19 +110,12 @@ resource "aws_db_parameter_group" "pgactive" {
 ###############################################
 # Option Group (PostgreSQL 17)
 ###############################################
-resource "aws_db_option_group" "pgactive" {
+resource "aws_db_option_group" "pgactive_options" {
   name                     = "accumulator-postgres17-options"
   engine_name              = "postgres"
   major_engine_version     = "17"
   option_group_description = "Option group for PostgreSQL 17"
-
-  option {
-    option_name = "PGLOGICAL"
-    # Add additional options here if needed
-  }
 }
-# If you want the default option group instead:
-# option_group_name = "default:postgres-17"
 
 ###############################################
 # RDS PostgreSQL Node 1 (Encrypted, PG 17.6)
@@ -266,7 +259,7 @@ resource "aws_ecs_task_definition" "sql_runner" {
   container_definitions = jsonencode([
     {
       name      = "sql-runner"
-      image     = "postgres:17"
+      image     = "postgres:17.6"
       essential = true
 
       command = [
