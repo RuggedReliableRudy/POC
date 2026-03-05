@@ -1,11 +1,11 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: IAM roles for ECS tasks with VAEC permissions boundary
+Description: IAM roles for ECS tasks with VAEC permissions boundary (Pre‑Prod Environment)
 
 Parameters:
   ProjectName:
     Type: String
     Default: pre-prod-accumulator
-    Description: Project prefix for GitHub Actions role only
+    Description: Project prefix (not used for GitHub Actions in pre‑prod)
 
 Resources:
 
@@ -84,31 +84,6 @@ Resources:
                 Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
-  ###############################################
-  # GitHub Actions Role (Updated Trust Policy)
-  ###############################################
-  GitHubActionsRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub pre-prod-accumulator-github-actions-iam-role
-      Path: /project/
-      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: "arn:aws-us-gov:iam::018743596699:role/project/project-projectaccumulator-github-actions-iam-role"
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: pre-prod-accumulator-github-actions-vpc-access
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action: "ec2:*"
-                Resource: "*"
-
 Outputs:
   ECSTaskExecutionRoleArn:
     Value: !GetAtt ECSTaskExecutionRole.Arn
@@ -118,6 +93,3 @@ Outputs:
 
   SQLRunnerRoleArn:
     Value: !GetAtt SQLRunnerRole.Arn
-
-  GitHubActionsRoleArn:
-    Value: !GetAtt GitHubActionsRole.Arn
