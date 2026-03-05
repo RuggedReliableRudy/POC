@@ -18,7 +18,12 @@ output "preprod_rds_port" {
 
 output "preprod_rds_db_name" {
   description = "Database name for pre-prod"
-  value       = local.db_creds.name
+  value       = nonsensitive(local.db_creds.name)
+}
+
+output "preprod_rds_username" {
+  description = "Database username for pre-prod"
+  value       = nonsensitive(local.db_creds.user)
 }
 
 ###############################################
@@ -95,4 +100,3 @@ output "preprod_sql_runner_log_group" {
   description = "CloudWatch Log Group for SQL Runner"
   value       = aws_cloudwatch_log_group.sql_runner.name
 }
-
