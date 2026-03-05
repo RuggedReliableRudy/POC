@@ -4,18 +4,15 @@ Description: IAM roles for ECS tasks with VAEC permissions boundary
 Parameters:
   ProjectName:
     Type: String
-    Default: projectaccumulator
+    Default: pre-prod-accumulator
     Description: Project prefix for GitHub Actions role only
 
 Resources:
 
-  ###############################################
-  # ECS Task Execution Role (Terraform expects exact name)
-  ###############################################
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: project-cpeload-ecs-task-execution-role
+      RoleName: pre-prod-accumulator-ecs-task-execution-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -28,13 +25,10 @@ Resources:
       ManagedPolicyArns:
         - arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
-  ###############################################
-  # ECS Task Role (Application Role)
-  ###############################################
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: project-cpeload-ecs-task-role
+      RoleName: pre-prod-accumulator-ecs-task-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -45,7 +39,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: project-cpeload-ecs-s3-access
+        - PolicyName: pre-prod-accumulator-ecs-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -54,16 +48,13 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - arn:aws-us-gov:s3:::project-accumulator-glue-job
-                  - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
+                  - arn:aws-us-gov:s3:::pre-prod-accumulator-glue-job
+                  - arn:aws-us-gov:s3:::pre-prod-accumulator-glue-job/*
 
-  ###############################################
-  # SQL Runner Role
-  ###############################################
   SQLRunnerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: project-cpeload-sql-runner-role
+      RoleName: pre-prod-accumulator-sql-runner-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -74,7 +65,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: project-cpeload-sql-s3-access
+        - PolicyName: pre-prod-accumulator-sql-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -82,15 +73,12 @@ Resources:
                 Action:
                   - s3:GetObject
                 Resource:
-                  - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
+                  - arn:aws-us-gov:s3:::pre-prod-accumulator-glue-job/*
 
-  ###############################################
-  # GitHub Actions Role (with full EC2/VPC permissions)
-  ###############################################
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${ProjectName}-github-actions-iam-role
+      RoleName: !Sub pre-prod-accumulator-github-actions-iam-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -101,7 +89,7 @@ Resources:
               AWS: "*"
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: project-github-actions-vpc-access
+        - PolicyName: pre-prod-accumulator-github-actions-vpc-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
