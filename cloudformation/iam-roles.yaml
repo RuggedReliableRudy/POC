@@ -48,8 +48,8 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - arn:aws-us-gov:s3:::pre-prod-accumulator-glue-job
-                  - arn:aws-us-gov:s3:::pre-prod-accumulator-glue-job/*
+                  - arn:aws-us-gov:s3:::project-accumulator-glue-job
+                  - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
   SQLRunnerRole:
     Type: AWS::IAM::Role
@@ -73,7 +73,7 @@ Resources:
                 Action:
                   - s3:GetObject
                 Resource:
-                  - arn:aws-us-gov:s3:::pre-prod-accumulator-glue-job/*
+                  - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
   GitHubActionsRole:
     Type: AWS::IAM::Role
