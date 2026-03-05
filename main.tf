@@ -99,7 +99,7 @@ resource "aws_security_group_rule" "ecs_to_db" {
 }
 
 ###############################################
-# Parameter Group (GovCloud PG17-compatible)
+# Parameter Group (PostgreSQL 17)
 ###############################################
 resource "aws_db_parameter_group" "pgactive" {
   name        = "pgactive-params"
@@ -108,12 +108,12 @@ resource "aws_db_parameter_group" "pgactive" {
 }
 
 ###############################################
-# RDS PostgreSQL Node 1 (Encrypted, PG17)
+# RDS PostgreSQL Node 1 (Encrypted, PG17.5-R2)
 ###############################################
 resource "aws_db_instance" "node1" {
   identifier              = "pgactive-node1"
   engine                  = "postgres"
-  engine_version          = "17.1"
+  engine_version          = "17.5-R2"
   instance_class          = "db.m6g.large"
   allocated_storage       = 100
 
@@ -133,12 +133,12 @@ resource "aws_db_instance" "node1" {
 }
 
 ###############################################
-# RDS PostgreSQL Node 2 (Encrypted, PG17)
+# RDS PostgreSQL Node 2 (Encrypted, PG17.5-R2)
 ###############################################
 resource "aws_db_instance" "node2" {
   identifier              = "pgactive-node2"
   engine                  = "postgres"
-  engine_version          = "17.1"
+  engine_version          = "17.5-R2"
   instance_class          = "db.m6g.large"
   allocated_storage       = 100
 
