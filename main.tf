@@ -31,47 +31,14 @@ data "aws_db_subnet_group" "rds" {
 # Parameter Group (existing)
 ###############################################
 data "aws_db_parameter_group" "pgactive" {
-  name = "pre-prod-accumulator-postgres17"
+  name = "accumulator-postgres17"
 }
 
 ###############################################
-# KMS Key for RDS Encryption
+# KMS Key (existing external key)
 ###############################################
-resource "aws_kms_key" "rds" {
-  description         = "pre-prod-accumulator RDS encryption key"
-  enable_key_rotation = true
-
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "EnableRootPermissions",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws-us-gov:iam::${var.account_id}:root"
-      },
-      "Action": "kms:*",
-      "Resource": "*"
-    },
-    {
-      "Sid": "AllowRDSUseOfKey",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "rds.amazonaws.com"
-      },
-      "Action": [
-        "kms:Encrypt",
-        "kms:Decrypt",
-        "kms:GenerateDataKey*",
-        "kms:CreateGrant",
-        "kms:DescribeKey"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-EOF
+locals {
+  kms_arn = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/0a3ecfea-7596-48e4-9ea7-d91f4ed389b5"
 }
 
 ###############################################
@@ -116,7 +83,7 @@ resource "aws_db_instance" "node1" {
   allocated_storage       = 100
 
   storage_encrypted       = true
-  kms_key_id              = aws_kms_key.rds.arn
+  kms_key_id              = local.kms_arn
 
   db_name                 = local.db_creds.name
   username                = local.db_creds.user
@@ -143,7 +110,7 @@ resource "aws_db_instance" "node2" {
   allocated_storage       = 100
 
   storage_encrypted       = true
-  kms_key_id              = aws_kms_key.rds.arn
+  kms_key_id              = local.kms_arn
 
   db_name                 = local.db_creds.name
   username                = local.db_creds.user
