@@ -2,7 +2,7 @@
 # Secrets Lookup
 ###############################################
 data "aws_secretsmanager_secret" "db_secret" {
-  name = "accumulator"
+  name = "pre-prod-accumulator"
 }
 
 data "aws_secretsmanager_secret_version" "db_creds" {
@@ -31,21 +31,14 @@ data "aws_db_subnet_group" "rds" {
 # Parameter Group (existing)
 ###############################################
 data "aws_db_parameter_group" "pgactive" {
-  name = "accumulator-postgres17"
+  name = "pre-prod-accumulator-postgres17"
 }
-
-###############################################
-# Option Group (existing)
-# NOTE: Terraform does NOT support a data source for option groups.
-# We reference the existing option group directly by name.
-###############################################
-# option_group_name = "default:postgres-17"
 
 ###############################################
 # KMS Key for RDS Encryption
 ###############################################
 resource "aws_kms_key" "rds" {
-  description         = "Customer-managed KMS key for RDS encryption"
+  description         = "pre-prod-accumulator RDS encryption key"
   enable_key_rotation = true
 
   policy = <<EOF
@@ -85,7 +78,7 @@ EOF
 # Security Groups
 ###############################################
 resource "aws_security_group" "db" {
-  name   = "pgactive-db-sg"
+  name   = "pre-prod-accumulator-db-sg"
   vpc_id = var.vpc_id
 }
 
@@ -99,7 +92,7 @@ resource "aws_security_group_rule" "db_bidirectional" {
 }
 
 resource "aws_security_group" "ecs" {
-  name   = "cpeload-ecs-sg"
+  name   = "pre-prod-accumulator-ecs-sg"
   vpc_id = var.vpc_id
 }
 
@@ -113,10 +106,10 @@ resource "aws_security_group_rule" "ecs_to_db" {
 }
 
 ###############################################
-# RDS PostgreSQL Node 1 (Encrypted, PG 17.6)
+# RDS PostgreSQL Node 1
 ###############################################
 resource "aws_db_instance" "node1" {
-  identifier              = "pgactive-node1"
+  identifier              = "pre-prod-accumulator-node1"
   engine                  = "postgres"
   engine_version          = "17.6"
   instance_class          = "db.m6g.large"
@@ -140,10 +133,10 @@ resource "aws_db_instance" "node1" {
 }
 
 ###############################################
-# RDS PostgreSQL Node 2 (Encrypted, PG 17.6)
+# RDS PostgreSQL Node 2
 ###############################################
 resource "aws_db_instance" "node2" {
-  identifier              = "pgactive-node2"
+  identifier              = "pre-prod-accumulator-node2"
   engine                  = "postgres"
   engine_version          = "17.6"
   instance_class          = "db.m6g.large"
@@ -170,29 +163,29 @@ resource "aws_db_instance" "node2" {
 # ECS Cluster
 ###############################################
 resource "aws_ecs_cluster" "this" {
-  name = "cpeload-cluster"
+  name = "pre-prod-accumulator-cluster"
 }
 
 ###############################################
-# IAM Roles (existing from CloudFormation)
+# IAM Roles (existing)
 ###############################################
 data "aws_iam_role" "ecs_task_execution" {
-  name = "project-cpeload-ecs-task-execution-role"
+  name = "pre-prod-accumulator-ecs-task-execution-role"
 }
 
 data "aws_iam_role" "ecs_task" {
-  name = "project-cpeload-ecs-task-role"
+  name = "pre-prod-accumulator-ecs-task-role"
 }
 
 data "aws_iam_role" "sql_runner" {
-  name = "project-cpeload-sql-runner-role"
+  name = "pre-prod-accumulator-sql-runner-role"
 }
 
 ###############################################
 # ECS Task Definition (App)
 ###############################################
 resource "aws_ecs_task_definition" "cpeload" {
-  family                   = "cpeload-task"
+  family                   = "pre-prod-accumulator-cpeload-task"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "512"
@@ -203,7 +196,7 @@ resource "aws_ecs_task_definition" "cpeload" {
 
   container_definitions = jsonencode([
     {
-      name      = "cpeload-app"
+      name      = "pre-prod-accumulator-cpeload-app"
       image     = "${var.ecr_uri}:${var.image_tag}"
       essential = true
       command   = ["java", "-jar", "CpeLoad-0.1.jar"]
@@ -213,13 +206,13 @@ resource "aws_ecs_task_definition" "cpeload" {
         { name = "DB_PORT", value = "5430" },
         { name = "DB_NAME", value = local.db_creds.name },
         { name = "DB_USER", value = local.db_creds.user },
-        { name = "S3_BUCKET", value = "project-accumulator-glue-job" }
+        { name = "S3_BUCKET", value = "pre-prod-accumulator-glue-job" }
       ]
 
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = "/ecs/cpeload"
+          awslogs-group         = "/ecs/pre-prod-accumulator-cpeload"
           awslogs-region        = "us-gov-west-1"
           awslogs-stream-prefix = "ecs"
         }
@@ -229,7 +222,7 @@ resource "aws_ecs_task_definition" "cpeload" {
 }
 
 resource "aws_cloudwatch_log_group" "ecs" {
-  name              = "/ecs/cpeload"
+  name              = "/ecs/pre-prod-accumulator-cpeload"
   retention_in_days = 14
 }
 
@@ -237,12 +230,12 @@ resource "aws_cloudwatch_log_group" "ecs" {
 # ECS Task Definition (SQL Runner)
 ###############################################
 resource "aws_cloudwatch_log_group" "sql_runner" {
-  name              = "/ecs/sql-runner"
+  name              = "/ecs/pre-prod-accumulator-sql-runner"
   retention_in_days = 14
 }
 
 resource "aws_ecs_task_definition" "sql_runner" {
-  family                   = "sql-runner-task"
+  family                   = "pre-prod-accumulator-sql-runner-task"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "256"
@@ -253,7 +246,7 @@ resource "aws_ecs_task_definition" "sql_runner" {
 
   container_definitions = jsonencode([
     {
-      name      = "sql-runner"
+      name      = "pre-prod-accumulator-sql-runner"
       image     = "postgres:17.6"
       essential = true
 
@@ -261,7 +254,7 @@ resource "aws_ecs_task_definition" "sql_runner" {
         "sh",
         "-c",
         <<-EOF
-          aws s3 cp s3://project-accumulator-glue-job/docmp_tables.sql /tmp/docmp_tables.sql && \
+          aws s3 cp s3://pre-prod-accumulator-glue-job/docmp_tables.sql /tmp/docmp_tables.sql && \
           PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -c 'CREATE SCHEMA IF NOT EXISTS "DOCMP";' && \
           PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -f /tmp/docmp_tables.sql
         EOF
@@ -274,7 +267,7 @@ resource "aws_ecs_task_definition" "sql_runner" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = "/ecs/sql-runner"
+          awslogs-group         = "/ecs/pre-prod-accumulator-sql-runner"
           awslogs-region        = "us-gov-west-1"
           awslogs-stream-prefix = "ecs"
         }
@@ -287,7 +280,7 @@ resource "aws_ecs_task_definition" "sql_runner" {
 # ECS Service (App)
 ###############################################
 resource "aws_ecs_service" "cpeload" {
-  name            = "cpeload-service"
+  name            = "pre-prod-accumulator-cpeload-service"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.cpeload.arn
   desired_count   = var.desired_count
