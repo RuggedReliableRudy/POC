@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: IAM roles for ECS tasks with VAEC permissions boundary
+Description: IAM roles for ECS tasks with VAEC permissions boundary (QA Environment)
 
 Parameters:
   ProjectName:
     Type: String
-    Default: pre-prod-accumulator
+    Default: qa-accumulator
     Description: Project prefix for GitHub Actions role only
 
 Resources:
@@ -15,7 +15,7 @@ Resources:
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: pre-prod-accumulator-ecs-task-execution-role
+      RoleName: qa-accumulator-ecs-task-execution-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -34,7 +34,7 @@ Resources:
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: pre-prod-accumulator-ecs-task-role
+      RoleName: qa-accumulator-ecs-task-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -45,7 +45,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: pre-prod-accumulator-ecs-s3-access
+        - PolicyName: qa-accumulator-ecs-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -63,7 +63,7 @@ Resources:
   SQLRunnerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: pre-prod-accumulator-sql-runner-role
+      RoleName: qa-accumulator-sql-runner-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -74,7 +74,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: pre-prod-accumulator-sql-s3-access
+        - PolicyName: qa-accumulator-sql-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -90,7 +90,7 @@ Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub pre-prod-accumulator-github-actions-iam-role
+      RoleName: !Sub qa-accumulator-github-actions-iam-role
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -101,7 +101,7 @@ Resources:
               AWS: "arn:aws-us-gov:iam::018743596699:role/project/project-projectaccumulator-github-actions-iam-role"
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: pre-prod-accumulator-github-actions-vpc-access
+        - PolicyName: qa-accumulator-github-actions-vpc-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
