@@ -222,14 +222,101 @@ resource "aws_cloudwatch_log_group" "sql_runner" {
 }
 
 ###############################################
-# ECS Task Definitions (cannot be tagged)
+# ECS Task Definition – cpeload
 ###############################################
 resource "aws_ecs_task_definition" "cpeload" {
-  ...
+  family                   = "cpeload"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "512"
+  memory                   = "1024"
+  execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = data.aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "cpeload"
+      image     = var.cpeload_image
+      essential = true
+
+      cpu       = 256
+      memory    = 512
+
+      environment = [
+        { name = "DB_HOST",     value = aws_db_instance.node1.address },
+        { name = "DB_PORT",     value = "5430" },
+        { name = "DB_NAME",     value = local.db_creds.name },
+        { name = "DB_USER",     value = local.db_creds.user },
+        { name = "DB_PASSWORD", value = local.db_creds.password }
+      ]
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "pg_isready -h ${aws_db_instance.node1.address} -p 5430 || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 20
+      }
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name
+          awslogs-region        = var.region
+          awslogs-stream-prefix = "cpeload"
+        }
+      }
+    }
+  ])
 }
 
+###############################################
+# ECS Task Definition – sql_runner
+###############################################
 resource "aws_ecs_task_definition" "sql_runner" {
-  ...
+  family                   = "sql-runner"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = data.aws_iam_role.sql_runner.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "sql-runner"
+      image     = var.sql_runner_image
+      essential = true
+
+      cpu       = 128
+      memory    = 256
+
+      environment = [
+        { name = "DB_HOST",     value = aws_db_instance.node1.address },
+        { name = "DB_PORT",     value = "5430" },
+        { name = "DB_NAME",     value = local.db_creds.name },
+        { name = "DB_USER",     value = local.db_creds.user },
+        { name = "DB_PASSWORD", value = local.db_creds.password }
+      ]
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "pg_isready -h ${aws_db_instance.node1.address} -p 5430 || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 20
+      }
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.sql_runner.name
+          awslogs-region        = var.region
+          awslogs-stream-prefix = "sql-runner"
+        }
+      }
+    }
+  ])
 }
 
 ###############################################
@@ -249,4 +336,32 @@ resource "aws_ecs_service" "cpeload" {
   }
 
   tags = local.common_tags
+}
+
+###############################################
+# Autoscaling for ECS Service
+###############################################
+resource "aws_appautoscaling_target" "cpeload" {
+  max_capacity       = 6
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.this.name}/${aws_ecs_service.cpeload.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "cpeload_cpu" {
+  name               = "cpeload-cpu-scaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.cpeload.resource_id
+  scalable_dimension = aws_appautoscaling_target.cpeload.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.cpeload.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 60
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+  }
 }
