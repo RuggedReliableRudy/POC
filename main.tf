@@ -1,4 +1,15 @@
 ###############################################
+# Global Tags
+###############################################
+locals {
+  common_tags = {
+    Environment = "Dev"
+    Repository  = "Project-Accumulator"
+    ManagedBy   = "Terraform"
+  }
+}
+
+###############################################
 # Secrets Lookup
 ###############################################
 data "aws_secretsmanager_secret" "db_secret" {
@@ -33,13 +44,6 @@ data "aws_db_subnet_group" "rds" {
 data "aws_db_parameter_group" "pgactive" {
   name = "accumulator-postgres17"
 }
-
-###############################################
-# Option Group (existing)
-# NOTE: Terraform does NOT support a data source for option groups.
-# We reference the existing option group directly by name.
-###############################################
-# option_group_name = "default:postgres-17"
 
 ###############################################
 # KMS Key for RDS Encryption
@@ -79,6 +83,8 @@ resource "aws_kms_key" "rds" {
   ]
 }
 EOF
+
+  tags = local.common_tags
 }
 
 ###############################################
@@ -87,6 +93,8 @@ EOF
 resource "aws_security_group" "db" {
   name   = "pgactive-db-sg"
   vpc_id = var.vpc_id
+
+  tags = local.common_tags
 }
 
 resource "aws_security_group_rule" "db_bidirectional" {
@@ -101,6 +109,8 @@ resource "aws_security_group_rule" "db_bidirectional" {
 resource "aws_security_group" "ecs" {
   name   = "cpeload-ecs-sg"
   vpc_id = var.vpc_id
+
+  tags = local.common_tags
 }
 
 resource "aws_security_group_rule" "ecs_to_db" {
@@ -113,7 +123,7 @@ resource "aws_security_group_rule" "ecs_to_db" {
 }
 
 ###############################################
-# RDS PostgreSQL Node 1 (Encrypted, PG 17.6)
+# RDS PostgreSQL Node 1
 ###############################################
 resource "aws_db_instance" "node1" {
   identifier              = "pgactive-node1"
@@ -137,10 +147,12 @@ resource "aws_db_instance" "node1" {
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
 
   skip_final_snapshot     = true
+
+  tags = local.common_tags
 }
 
 ###############################################
-# RDS PostgreSQL Node 2 (Encrypted, PG 17.6)
+# RDS PostgreSQL Node 2
 ###############################################
 resource "aws_db_instance" "node2" {
   identifier              = "pgactive-node2"
@@ -164,6 +176,8 @@ resource "aws_db_instance" "node2" {
   db_subnet_group_name    = data.aws_db_subnet_group.rds.name
 
   skip_final_snapshot     = true
+
+  tags = local.common_tags
 }
 
 ###############################################
@@ -171,10 +185,12 @@ resource "aws_db_instance" "node2" {
 ###############################################
 resource "aws_ecs_cluster" "this" {
   name = "cpeload-cluster"
+
+  tags = local.common_tags
 }
 
 ###############################################
-# IAM Roles (existing from CloudFormation)
+# IAM Roles (existing)
 ###############################################
 data "aws_iam_role" "ecs_task_execution" {
   name = "project-cpeload-ecs-task-execution-role"
@@ -189,102 +205,35 @@ data "aws_iam_role" "sql_runner" {
 }
 
 ###############################################
-# ECS Task Definition (App)
+# CloudWatch Log Groups
 ###############################################
-resource "aws_ecs_task_definition" "cpeload" {
-  family                   = "cpeload-task"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "512"
-  memory                   = "1024"
-
-  execution_role_arn = data.aws_iam_role.ecs_task_execution.arn
-  task_role_arn      = data.aws_iam_role.ecs_task.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = "cpeload-app"
-      image     = "${var.ecr_uri}:${var.image_tag}"
-      essential = true
-      command   = ["java", "-jar", "CpeLoad-0.1.jar"]
-
-      environment = [
-        { name = "DB_HOST", value = aws_db_instance.node1.address },
-        { name = "DB_PORT", value = "5430" },
-        { name = "DB_NAME", value = local.db_creds.name },
-        { name = "DB_USER", value = local.db_creds.user },
-        { name = "S3_BUCKET", value = "project-accumulator-glue-job" }
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/cpeload"
-          awslogs-region        = "us-gov-west-1"
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
-}
-
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/cpeload"
   retention_in_days = 14
+
+  tags = local.common_tags
 }
 
-###############################################
-# ECS Task Definition (SQL Runner)
-###############################################
 resource "aws_cloudwatch_log_group" "sql_runner" {
   name              = "/ecs/sql-runner"
   retention_in_days = 14
-}
 
-resource "aws_ecs_task_definition" "sql_runner" {
-  family                   = "sql-runner-task"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-
-  execution_role_arn = data.aws_iam_role.ecs_task_execution.arn
-  task_role_arn      = data.aws_iam_role.sql_runner.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = "sql-runner"
-      image     = "postgres:17.6"
-      essential = true
-
-      command = [
-        "sh",
-        "-c",
-        <<-EOF
-          aws s3 cp s3://project-accumulator-glue-job/docmp_tables.sql /tmp/docmp_tables.sql && \
-          PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -c 'CREATE SCHEMA IF NOT EXISTS "DOCMP";' && \
-          PGPASSWORD=${local.db_creds.password} psql -h ${aws_db_instance.node1.address} -p 5430 -U ${local.db_creds.user} -d ${local.db_creds.name} -f /tmp/docmp_tables.sql
-        EOF
-      ]
-
-      environment = [
-        { name = "AWS_REGION", value = "us-gov-west-1" }
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/sql-runner"
-          awslogs-region        = "us-gov-west-1"
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
+  tags = local.common_tags
 }
 
 ###############################################
-# ECS Service (App)
+# ECS Task Definitions (cannot be tagged)
+###############################################
+resource "aws_ecs_task_definition" "cpeload" {
+  ...
+}
+
+resource "aws_ecs_task_definition" "sql_runner" {
+  ...
+}
+
+###############################################
+# ECS Service
 ###############################################
 resource "aws_ecs_service" "cpeload" {
   name            = "cpeload-service"
@@ -298,4 +247,6 @@ resource "aws_ecs_service" "cpeload" {
     security_groups = [aws_security_group.ecs.id]
     assign_public_ip = false
   }
+
+  tags = local.common_tags
 }
