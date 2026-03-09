@@ -25,6 +25,22 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+
+      # Add inline ECR pull policy
+      Policies:
+        - PolicyName: ecs-execution-ecr-pull
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: ECRPull
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
+
       ManagedPolicyArns:
         - arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
@@ -44,17 +60,25 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+
+      # Add inline S3 read-only policy
       Policies:
         - PolicyName: project-cpeload-ecs-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-              - Effect: Allow
+              - Sid: ListBucket
+                Effect: Allow
                 Action:
-                  - s3:GetObject
                   - s3:ListBucket
                 Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job
+
+              - Sid: GetObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
   ###############################################
@@ -73,19 +97,22 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+
+      # Add inline S3 read-only policy
       Policies:
         - PolicyName: project-cpeload-sql-s3-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-              - Effect: Allow
+              - Sid: GetObjects
+                Effect: Allow
                 Action:
                   - s3:GetObject
                 Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
   ###############################################
-  # GitHub Actions Role (with full EC2/VPC permissions)
+  # GitHub Actions Role (unchanged)
   ###############################################
   GitHubActionsRole:
     Type: AWS::IAM::Role
@@ -100,6 +127,7 @@ Resources:
             Principal:
               AWS: "*"
             Action: sts:AssumeRole
+
       Policies:
         - PolicyName: project-github-actions-vpc-access
           PolicyDocument:
