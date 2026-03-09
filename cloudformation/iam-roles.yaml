@@ -4,20 +4,20 @@ Description: IAM roles for ECS tasks with VAEC permissions boundary
 Parameters:
   ProjectName:
     Type: String
-    Default: projectaccumulator
+    Default: dev-accumulator
     Description: Project prefix for GitHub Actions role only
 
 Resources:
 
   ###############################################
-  # ECS Task Execution Role (Terraform expects exact name)
+  # ECS Task Execution Role
   ###############################################
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: project-cpeload-ecs-task-execution-role
+      RoleName: project-dev-accumulator-ecs-task-execution-role
       Path: /project/
-      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
+      PermissionsBoundary: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -26,7 +26,9 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
 
-      # Add inline ECR pull policy
+      ManagedPolicyArns:
+        - arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
       Policies:
         - PolicyName: ecs-execution-ecr-pull
           PolicyDocument:
@@ -41,8 +43,18 @@ Resources:
                   - ecr:BatchGetImage
                 Resource: "*"
 
-      ManagedPolicyArns:
-        - arn:aws-us-gov:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+              - Sid: CloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+              - Sid: KMSDecryptForLogs
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: "*"
 
   ###############################################
   # ECS Task Role (Application Role)
@@ -50,9 +62,9 @@ Resources:
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: project-cpeload-ecs-task-role
+      RoleName: project-dev-accumulator-ecs-task-role
       Path: /project/
-      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
+      PermissionsBoundary: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -61,12 +73,13 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
 
-      # Add inline S3 read-only policy
       Policies:
-        - PolicyName: project-cpeload-ecs-s3-access
+        - PolicyName: project-dev-accumulator-ecs-s3-secrets-kms
           PolicyDocument:
             Version: 2012-10-17
             Statement:
+
+              # S3 Read Access
               - Sid: ListBucket
                 Effect: Allow
                 Action:
@@ -81,15 +94,38 @@ Resources:
                 Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
+              # Secrets Manager Read
+              - Sid: SecretsManagerRead
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: "*"
+
+              # KMS Decrypt (for Secrets Manager + encrypted S3)
+              - Sid: KMSDecrypt
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: "*"
+
+              # CloudWatch Logs Write
+              - Sid: CloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
   ###############################################
   # SQL Runner Role
   ###############################################
   SQLRunnerRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: project-cpeload-sql-runner-role
+      RoleName: project-dev-accumulator-sql-runner-role
       Path: /project/
-      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
+      PermissionsBoundary: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/vaec/project-admin"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -98,12 +134,13 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
 
-      # Add inline S3 read-only policy
       Policies:
-        - PolicyName: project-cpeload-sql-s3-access
+        - PolicyName: project-dev-accumulator-sql-s3-secrets-kms
           PolicyDocument:
             Version: 2012-10-17
             Statement:
+
+              # S3 Read Access
               - Sid: GetObjects
                 Effect: Allow
                 Action:
@@ -111,13 +148,36 @@ Resources:
                 Resource:
                   - arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
-  ###############################################
-  # GitHub Actions Role (unchanged)
+              # Secrets Manager Read
+              - Sid: SecretsManagerRead
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: "*"
+
+              # KMS Decrypt
+              - Sid: KMSDecrypt
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: "*"
+
+              # CloudWatch Logs Write
+              - Sid: CloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+   ###############################################
+  # GitHub Actions Role
   ###############################################
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub project-${ProjectName}-github-actions-iam-role
+      RoleName: !Sub "project-${ProjectName}-github-actions-iam-role"
       Path: /project/
       PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
       AssumeRolePolicyDocument:
@@ -135,6 +195,32 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: "ec2:*"
+                Resource: "*"
+
+        - PolicyName: project-github-actions-ecr-push
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: ECRAuth
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+
+              - Sid: ECRPush
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                Resource: "*"
+
+              - Sid: OptionalCreateRepo
+                Effect: Allow
+                Action:
+                  - ecr:CreateRepository
                 Resource: "*"
 
 Outputs:
