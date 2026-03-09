@@ -27,6 +27,7 @@ sudo ./svc.sh start
 sudo ./svc.sh status
 
 execution
+
 resource "aws_iam_role_policy" "ecs_execution_ecr" {
   name = "ecs-execution-ecr-pull"
   role = data.aws_iam_role.ecs_task_execution.name
