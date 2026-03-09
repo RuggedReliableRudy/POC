@@ -102,7 +102,7 @@ Resources:
                   - secretsmanager:DescribeSecret
                 Resource: "*"
 
-              # KMS Decrypt (for Secrets Manager + encrypted S3)
+              # KMS Decrypt
               - Sid: KMSDecrypt
                 Effect: Allow
                 Action:
@@ -171,7 +171,7 @@ Resources:
                   - logs:PutLogEvents
                 Resource: "*"
 
-   ###############################################
+  ###############################################
   # GitHub Actions Role
   ###############################################
   GitHubActionsRole:
