@@ -35,19 +35,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
 
       # ----------------------------------------------------
-      # Deploy IAM Roles via CloudFormation
-      # ----------------------------------------------------
-      - name: Deploy IAM Roles (CloudFormation)
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
-        with:
-          name: project-cpeload-iam
-          template: cloudformation/iam-roles.yaml
-          no-fail-on-empty-changeset: "1"
-          capabilities: CAPABILITY_NAMED_IAM
-          parameter-overrides: |
-            ProjectName=projectaccumulator
-
-      # ----------------------------------------------------
       # Login to Amazon ECR
       # ----------------------------------------------------
       - name: Login to Amazon ECR
