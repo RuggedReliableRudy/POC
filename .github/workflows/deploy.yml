@@ -118,9 +118,45 @@ jobs:
           terraform plan \
             -var="ecr_uri=${ECR_URI}" \
             -var="image_tag=${IMAGE_TAG}"
-
+            
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve \
             -var="ecr_uri=${ECR_URI}" \
             -var="image_tag=${IMAGE_TAG}"
+
+      # ----------------------------------------------------
+      # Extract Terraform Outputs
+      # ----------------------------------------------------
+      - name: Export Terraform Outputs
+        id: tfout
+        run: |
+          echo "NODE1_HOST=$(terraform output -raw rds_node1_endpoint)" >> $GITHUB_ENV
+          echo "NODE2_HOST=$(terraform output -raw rds_node2_endpoint)" >> $GITHUB_ENV
+          echo "DB_NAME=$(terraform output -raw database_name)" >> $GITHUB_ENV
+          echo "APP_USER=$(terraform output -raw app_user)" >> $GITHUB_ENV
+
+      # ----------------------------------------------------
+      # Export Secrets for Ansible
+      # ----------------------------------------------------
+      - name: Export DB Secrets
+        run: |
+          echo "DB_ADMIN_USER=${{ secrets.DB_ADMIN_USER }}" >> $GITHUB_ENV
+          echo "DB_ADMIN_PASSWORD=${{ secrets.DB_ADMIN_PASSWORD }}" >> $GITHUB_ENV
+          echo "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" >> $GITHUB_ENV
+
+      # ----------------------------------------------------
+      # Install Ansible + PostgreSQL Collection
+      # ----------------------------------------------------
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible python3-pip
+          ansible-galaxy collection install community.postgresql
+
+      # ----------------------------------------------------
+      # Run pgactive Setup
+      # ----------------------------------------------------
+      - name: Run pgactive setup
+        run: |
+          ansible-playbook -i inventory.ini pgactive_setup.yml
