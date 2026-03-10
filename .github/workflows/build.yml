@@ -33,6 +33,14 @@ jobs:
       # ----------------------------------------------------
       # Ensure ECR repo exists
       # ----------------------------------------------------
+     
+      - name: Create config.properties
+        run: |
+           echo "jdbc.url=${{ secrets.DB_URL }}" >> config.properties
+           echo "jdbc.user=${{ secrets.DB_USER }}" >> config.properties
+           echo "jdbc.pass=${{ secrets.DB_PASS }}" >> config.properties
+      
+      
       - name: Ensure ECR repository exists
         run: |
           if ! aws ecr describe-repositories --repository-names $IMAGE_NAME >/dev/null 2>&1; then
@@ -75,6 +83,7 @@ jobs:
           path: |
             ecr.txt
             image.txt
+            
 
       # ----------------------------------------------------
       # Build Docker image
