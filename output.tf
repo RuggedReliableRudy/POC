@@ -24,6 +24,29 @@ output "rds_node2_endpoint" {
   value       = aws_db_instance.node2.address
 }
 
+output "rds_node1_port" {
+  description = "Port for RDS PostgreSQL node 1"
+  value       = aws_db_instance.node1.port
+}
+
+output "rds_node2_port" {
+  description = "Port for RDS PostgreSQL node 2"
+  value       = aws_db_instance.node2.port
+}
+
+###############################################
+# PostgreSQL User / DB Outputs
+###############################################
+output "app_user" {
+  description = "Application-level PostgreSQL user created on both nodes"
+  value       = var.app_user
+}
+
+output "database_name" {
+  description = "Database name created on both RDS nodes"
+  value       = local.db_creds.name
+}
+
 ###############################################
 # ECS Outputs
 ###############################################
@@ -72,4 +95,3 @@ output "repository" {
   description = "Repository name used for tagging"
   value       = var.repository
 }
-
