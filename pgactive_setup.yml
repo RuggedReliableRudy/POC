@@ -1,0 +1,57 @@
+---
+- name: Configure pgactive on Node 1
+  hosts: node1
+  gather_facts: false
+
+  vars:
+    db_name: "{{ lookup('env', 'DB_NAME') }}"
+    admin_user: "{{ lookup('env', 'DB_ADMIN_USER') }}"
+    admin_password: "{{ lookup('env', 'DB_ADMIN_PASSWORD') }}"
+    app_user: "{{ lookup('env', 'APP_USER') }}"
+    app_password: "{{ lookup('env', 'APP_PASSWORD') }}"
+    node1_host: "{{ lookup('env', 'NODE1_HOST') }}"
+    node2_host: "{{ lookup('env', 'NODE2_HOST') }}"
+    port: 5430
+
+  tasks:
+    - name: Create pgactive group on Node 1
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        login_host: "{{ node1_host }}"
+        login_user: "{{ admin_user }}"
+        login_password: "{{ admin_password }}"
+        port: "{{ port }}"
+        query: >
+          SELECT pgactive.pgactive_create_group(
+            node_name := '{{ db_name }}-endpoint1-app',
+            node_dsn  := 'host={{ node1_host }} dbname={{ db_name }} port={{ port }} user={{ app_user }} password={{ app_password }}'
+          );
+
+- name: Join Node 2 to pgactive group
+  hosts: node2
+  gather_facts: false
+
+  vars:
+    db_name: "{{ lookup('env', 'DB_NAME') }}"
+    admin_user: "{{ lookup('env', 'DB_ADMIN_USER') }}"
+    admin_password: "{{ lookup('env', 'DB_ADMIN_PASSWORD') }}"
+    app_user: "{{ lookup('env', 'APP_USER') }}"
+    app_password: "{{ lookup('env', 'APP_PASSWORD') }}"
+    node1_host: "{{ lookup('env', 'NODE1_HOST') }}"
+    node2_host: "{{ lookup('env', 'NODE2_HOST') }}"
+    port: 5430
+
+  tasks:
+    - name: Join pgactive group from Node 2
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        login_host: "{{ node2_host }}"
+        login_user: "{{ admin_user }}"
+        login_password: "{{ admin_password }}"
+        port: "{{ port }}"
+        query: >
+          SELECT pgactive.pgactive_join_group(
+            node_name       := '{{ db_name }}-endpoint2-app',
+            node_dsn        := 'host={{ node2_host }} dbname={{ db_name }} port={{ port }} user={{ app_user }} password={{ app_password }}',
+            join_using_dsn  := 'host={{ node1_host }} dbname={{ db_name }} port={{ port }} user={{ app_user }} password={{ app_password }}'
+          );
