@@ -93,8 +93,7 @@ EOF
 resource "aws_security_group" "db" {
   name   = "pgactive-db-sg"
   vpc_id = var.vpc_id
-
-  tags = local.common_tags
+  tags   = local.common_tags
 }
 
 resource "aws_security_group_rule" "db_bidirectional" {
@@ -109,8 +108,7 @@ resource "aws_security_group_rule" "db_bidirectional" {
 resource "aws_security_group" "ecs" {
   name   = "cpeload-ecs-sg"
   vpc_id = var.vpc_id
-
-  tags = local.common_tags
+  tags   = local.common_tags
 }
 
 resource "aws_security_group_rule" "ecs_to_db" {
@@ -181,11 +179,111 @@ resource "aws_db_instance" "node2" {
 }
 
 ###############################################
+# PostgreSQL Providers (Node1 & Node2)
+###############################################
+provider "postgresql" {
+  alias    = "node1"
+  host     = aws_db_instance.node1.address
+  port     = 5430
+  username = local.db_creds.user
+  password = local.db_creds.password
+  database = local.db_creds.name
+  sslmode  = "require"
+}
+
+provider "postgresql" {
+  alias    = "node2"
+  host     = aws_db_instance.node2.address
+  port     = 5430
+  username = local.db_creds.user
+  password = local.db_creds.password
+  database = local.db_creds.name
+  sslmode  = "require"
+}
+
+###############################################
+# PostgreSQL Users
+###############################################
+resource "postgresql_role" "app_user_node1" {
+  provider = postgresql.node1
+  name     = "app_user"
+  login    = true
+  password = local.db_creds.password
+}
+
+resource "postgresql_role" "app_user_node2" {
+  provider = postgresql.node2
+  name     = "app_user"
+  login    = true
+  password = local.db_creds.password
+}
+
+###############################################
+# PostgreSQL Privileges
+###############################################
+resource "postgresql_grant_role" "node1_replication" {
+  provider = postgresql.node1
+  role     = "rds_replication"
+  member   = postgresql_role.app_user_node1.name
+}
+
+resource "postgresql_grant_role" "node1_superuser" {
+  provider = postgresql.node1
+  role     = "rds_superuser"
+  member   = postgresql_role.app_user_node1.name
+}
+
+resource "postgresql_grant_role" "node2_replication" {
+  provider = postgresql.node2
+  role     = "rds_replication"
+  member   = postgresql_role.app_user_node2.name
+}
+
+resource "postgresql_grant_role" "node2_superuser" {
+  provider = postgresql.node2
+  role     = "rds_superuser"
+  member   = postgresql_role.app_user_node2.name
+}
+
+###############################################
+# CONNECT Privileges
+###############################################
+resource "postgresql_grant" "node1_connect" {
+  provider    = postgresql.node1
+  database    = local.db_creds.name
+  role        = postgresql_role.app_user_node1.name
+  object_type = "database"
+  privileges  = ["CONNECT"]
+}
+
+resource "postgresql_grant" "node2_connect" {
+  provider    = postgresql.node2
+  database    = local.db_creds.name
+  role        = postgresql_role.app_user_node2.name
+  object_type = "database"
+  privileges  = ["CONNECT"]
+}
+
+###############################################
+# pgactive Extension
+###############################################
+resource "postgresql_extension" "pgactive_node1" {
+  provider = postgresql.node1
+  name     = "pgactive"
+  database = local.db_creds.name
+}
+
+resource "postgresql_extension" "pgactive_node2" {
+  provider = postgresql.node2
+  name     = "pgactive"
+  database = local.db_creds.name
+}
+
+###############################################
 # ECS Cluster
 ###############################################
 resource "aws_ecs_cluster" "this" {
   name = "cpeload-cluster"
-
   tags = local.common_tags
 }
 
@@ -210,15 +308,13 @@ data "aws_iam_role" "sql_runner" {
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/cpeload"
   retention_in_days = 14
-
-  tags = local.common_tags
+  tags              = local.common_tags
 }
 
 resource "aws_cloudwatch_log_group" "sql_runner" {
   name              = "/ecs/sql-runner"
   retention_in_days = 14
-
-  tags = local.common_tags
+  tags              = local.common_tags
 }
 
 ###############################################
@@ -330,8 +426,8 @@ resource "aws_ecs_service" "cpeload" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = var.private_subnet_ids
-    security_groups = [aws_security_group.ecs.id]
+    subnets          = var.private_subnet_ids
+    security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = false
   }
 
