@@ -68,6 +68,22 @@ variable "db_allocated_storage" {
 }
 
 ###############################################
+# Application Database User
+###############################################
+
+variable "app_user" {
+  description = "Application-level PostgreSQL username created on both nodes"
+  type        = string
+  default     = "app_user"
+}
+
+variable "app_password" {
+  description = "Password for the application-level PostgreSQL user"
+  type        = string
+  sensitive   = true
+}
+
+###############################################
 # Tags
 ###############################################
 
