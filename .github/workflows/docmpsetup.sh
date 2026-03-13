@@ -19,6 +19,9 @@ export APP_USER2="docmpqauser2"
 export APP_PASS2="docmpadmin"
 
 
+sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+sudo yum -qy module disable postgresql
+sudo yum install -y postgresql17
 
 
 
@@ -51,13 +54,29 @@ echo "=== Starting FULL pgactive + DB setup ==="
 : "${APP_PASS2:?Missing APP_PASS2}"
 
 # -----------------------------
-# Install PostgreSQL 17 client
+# Install PostgreSQL 17 client (RHEL 9.7 compatible)
 # -----------------------------
 echo "Installing PostgreSQL 17 client..."
+
 if command -v yum >/dev/null 2>&1; then
+  echo "→ Detected RHEL-based system. Adding PGDG repo..."
+  sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+  echo "→ Disabling built-in PostgreSQL module..."
+  sudo yum -qy module disable postgresql
+
+  echo "→ Installing PostgreSQL 17 client..."
   sudo yum install -y postgresql17
+
 elif command -v apt-get >/dev/null 2>&1; then
+  echo "→ Detected Debian/Ubuntu system. Adding PGDG repo..."
   sudo apt-get update
+  sudo apt-get install -y wget ca-certificates gnupg
+  wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc
+  echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+  sudo apt-get update
+
+  echo "→ Installing PostgreSQL 17 client..."
   sudo apt-get install -y postgresql-client-17
 fi
 
@@ -90,8 +109,7 @@ run_psql "$ADMIN_PASS1" "$NODE1_HOST" "$ADMIN_USER1" postgres -v dbname="$DB_NAM
 DO $$
 BEGIN
    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'dbname') THEN
-      PERFORM dblink_exec('dbname=' || current_database(),
-                          'CREATE DATABASE ' || quote_ident(:'dbname'));
+      EXECUTE 'CREATE DATABASE ' || quote_ident(:'dbname');
    END IF;
 END$$;
 EOF
@@ -101,8 +119,7 @@ run_psql "$ADMIN_PASS2" "$NODE2_HOST" "$ADMIN_USER2" postgres -v dbname="$DB_NAM
 DO $$
 BEGIN
    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'dbname') THEN
-      PERFORM dblink_exec('dbname=' || current_database(),
-                          'CREATE DATABASE ' || quote_ident(:'dbname'));
+      EXECUTE 'CREATE DATABASE ' || quote_ident(:'dbname');
    END IF;
 END$$;
 EOF
@@ -205,3 +222,4 @@ echo "Validating pgactive cluster status on Node1..."
 run_psql "$ADMIN_PASS1" "$NODE1_HOST" "$ADMIN_USER1" "$DB_NAME" -c "SELECT * FROM pgactive.pgactive_node;"
 
 echo "=== FULL pgactive + DB setup complete ==="
+
