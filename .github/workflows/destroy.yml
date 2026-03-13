@@ -1,0 +1,62 @@
+name: Destroy CpeLoad Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: "Type YES to confirm destroying ALL infrastructure"
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-gov-west-1
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+      actions: write
+
+    steps:
+      # ----------------------------------------------------
+      # Safety Check
+      # ----------------------------------------------------
+      - name: Validate destroy confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm_destroy }}" != "YES" ]; then
+            echo "You must type YES to confirm destruction."
+            exit 1
+          fi
+
+      # ----------------------------------------------------
+      # Checkout source code
+      # ----------------------------------------------------
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------
+      # Configure AWS credentials
+      # ----------------------------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+
+      # ----------------------------------------------------
+      # Setup Terraform
+      # ----------------------------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      # ----------------------------------------------------
+      # Terraform Destroy
+      # ----------------------------------------------------
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
