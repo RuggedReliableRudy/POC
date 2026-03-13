@@ -32,7 +32,7 @@ sudo yum install -y postgresql17
 #!/bin/bash
 set -e
 
-echo "=== Starting FULL pgactive + DB setup ==="
+echo "=== Starting FULL pgactive + DB setup (Version A: recreate DB) ==="
 
 # -----------------------------
 # Required Environment Variables
@@ -55,33 +55,8 @@ echo "=== Starting FULL pgactive + DB setup ==="
 : "${APP_PASS2:?Missing APP_PASS2}"
 
 # -----------------------------
-# Install PostgreSQL 17 client (RHEL 9.7 compatible)
-# -----------------------------
-echo "Installing PostgreSQL 17 client..."
-
-if command -v yum >/dev/null 2>&1; then
-  echo "→ Detected RHEL-based system. Adding PGDG repo..."
-  sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-
-  echo "→ Disabling built-in PostgreSQL module..."
-  sudo yum -qy module disable postgresql
-
-  echo "→ Installing PostgreSQL 17 client..."
-  sudo yum install -y postgresql17
-
-elif command -v apt-get >/dev/null 2>&1; then
-  echo "→ Detected Debian/Ubuntu system. Adding PGDG repo..."
-  sudo apt-get update
-  sudo apt-get install -y wget ca-certificates gnupg
-  wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc
-  echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-  sudo apt-get update
-
-  echo "→ Installing PostgreSQL 17 client..."
-  sudo apt-get install -y postgresql-client-17
-fi
-
 # Helper function
+# -----------------------------
 run_psql() {
   local PASS=$1
   local HOST=$2
@@ -101,29 +76,6 @@ echo "Testing connectivity to Node2 (admin)..."
 run_psql "$ADMIN_PASS2" "$NODE2_HOST" "$ADMIN_USER2" postgres -c "SELECT version();"
 
 echo "✔ Connectivity OK"
-
-# -----------------------------
-# Create database on both nodes (if not exists)
-# -----------------------------
-echo "Ensuring database '$DB_NAME' exists on Node1..."
-run_psql "$ADMIN_PASS1" "$NODE1_HOST" "$ADMIN_USER1" postgres -v dbname="$DB_NAME" <<'EOF'
-DO $$
-BEGIN
-   IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'dbname') THEN
-      EXECUTE 'CREATE DATABASE ' || quote_ident(:'dbname');
-   END IF;
-END$$;
-EOF
-
-echo "Ensuring database '$DB_NAME' exists on Node2..."
-run_psql "$ADMIN_PASS2" "$NODE2_HOST" "$ADMIN_USER2" postgres -v dbname="$DB_NAME" <<'EOF'
-DO $$
-BEGIN
-   IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'dbname') THEN
-      EXECUTE 'CREATE DATABASE ' || quote_ident(:'dbname');
-   END IF;
-END$$;
-EOF
 
 # -----------------------------
 # Create app users on both nodes (if not exists)
@@ -149,6 +101,21 @@ END\$\$;
 EOF
 
 # -----------------------------
+# DROP + RECREATE DATABASE WITH CORRECT OWNER
+# -----------------------------
+echo "Dropping and recreating database '$DB_NAME' on Node1..."
+run_psql "$ADMIN_PASS1" "$NODE1_HOST" "$ADMIN_USER1" postgres <<EOF
+DROP DATABASE IF EXISTS $DB_NAME;
+CREATE DATABASE $DB_NAME OWNER $APP_USER1;
+EOF
+
+echo "Dropping and recreating database '$DB_NAME' on Node2..."
+run_psql "$ADMIN_PASS2" "$NODE2_HOST" "$ADMIN_USER2" postgres <<EOF
+DROP DATABASE IF EXISTS $DB_NAME;
+CREATE DATABASE $DB_NAME OWNER $APP_USER2;
+EOF
+
+# -----------------------------
 # Grant privileges + roles
 # -----------------------------
 echo "Granting privileges on Node1..."
@@ -163,19 +130,6 @@ run_psql "$ADMIN_PASS2" "$NODE2_HOST" "$ADMIN_USER2" postgres <<EOF
 GRANT CONNECT ON DATABASE $DB_NAME TO $APP_USER2;
 GRANT rds_superuser TO $APP_USER2;
 GRANT rds_replication TO $APP_USER2;
-EOF
-
-# -----------------------------
-# Change DB ownership to app users
-# -----------------------------
-echo "Setting DB owner on Node1 to $APP_USER1..."
-run_psql "$ADMIN_PASS1" "$NODE1_HOST" "$ADMIN_USER1" postgres <<EOF
-ALTER DATABASE $DB_NAME OWNER TO $APP_USER1;
-EOF
-
-echo "Setting DB owner on Node2 to $APP_USER2..."
-run_psql "$ADMIN_PASS2" "$NODE2_HOST" "$ADMIN_USER2" postgres <<EOF
-ALTER DATABASE $DB_NAME OWNER TO $APP_USER2;
 EOF
 
 # -----------------------------
@@ -222,5 +176,6 @@ EOF
 echo "Validating pgactive cluster status on Node1..."
 run_psql "$ADMIN_PASS1" "$NODE1_HOST" "$ADMIN_USER1" "$DB_NAME" -c "SELECT * FROM pgactive.pgactive_node;"
 
-echo "=== FULL pgactive + DB setup complete ==="
+echo "=== FULL pgactive + DB setup complete (Version A) ==="
+
 
