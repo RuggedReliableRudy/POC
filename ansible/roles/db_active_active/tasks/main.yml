@@ -1,0 +1,52 @@
+---
+- name: Ensure PostgreSQL client and tools are present
+  yum:
+    name:
+      - postgresql15
+      - jq
+      - awscli
+    state: present
+
+- name: Get DB secret from Secrets Manager
+  shell: |
+    aws secretsmanager get-secret-value \
+      --region us-gov-west-1 \
+      --secret-id "{{ secret_name }}" \
+      --query SecretString \
+      --output text
+  register: secret_raw
+  changed_when: false
+
+- name: Parse DB password from secret JSON
+  set_fact:
+    db_password: "{{ (secret_raw.stdout | from_json).password }}"
+
+- name: Enable pgcrypto on Node 1
+  command: >
+    psql "host={{ db_node1_endpoint }} port=5432 dbname={{ db_name }}
+          user={{ db_user }}" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+  environment:
+    PGPASSWORD: "{{ db_password }}"
+
+- name: Enable pgcrypto on Node 2
+  command: >
+    psql "host={{ db_node2_endpoint }} port=5432 dbname={{ db_name }}
+          user={{ db_user }}" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+  environment:
+    PGPASSWORD: "{{ db_password }}"
+
+- name: Create publication on Node 1
+  command: >
+    psql "host={{ db_node1_endpoint }} port=5432 dbname={{ db_name }}
+          user={{ db_user }}" -c "CREATE PUBLICATION cpe_pub FOR ALL TABLES;"
+  environment:
+    PGPASSWORD: "{{ db_password }}"
+
+- name: Create publication on Node 2
+  command: >
+    psql "host={{ db_node2_endpoint }} port=5432 dbname={{ db_name }}
+          user={{ db_user }}" -c "CREATE PUBLICATION cpe_pub FOR ALL TABLES;"
+  environment:
+    PGPASSWORD: "{{ db_password }}"
+
+# TODO: add CREATE SUBSCRIPTION on each node once you define connection strings

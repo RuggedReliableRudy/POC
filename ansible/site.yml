@@ -1,0 +1,14 @@
+---
+- name: Configure CPE app and DB active-active
+  hosts: cpe_app
+  become: yes
+  vars:
+    db_user: "cpe_user"
+    db_name: "cpe_db"
+    db_node1_endpoint: "{{ lookup('env', 'CPE_DB_NODE1') }}"
+    db_node2_endpoint: "{{ lookup('env', 'CPE_DB_NODE2') }}"
+    jar_name: "Cpe.1.0.0jar"
+    secret_name: "accumulator"
+  roles:
+    - role: java_app
+    - role: db_active_active
