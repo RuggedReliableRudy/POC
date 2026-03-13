@@ -1,40 +1,51 @@
 #!/bin/bash
 set -e
 
-echo "=== pgactive automated setup starting ==="
+echo "=== Starting automated pgactive setup ==="
 
 # -----------------------------
 # Required Environment Variables
 # -----------------------------
-: "${NODE1_HOST:?Need NODE1_HOST}"
-: "${NODE2_HOST:?Need NODE2_HOST}"
-: "${DB_NAME:?Need DB_NAME}"
-: "${APP_USER1:?Need APP_USER1}"
-: "${APP_PASS1:?Need APP_PASS1}"
-: "${APP_USER2:?Need APP_USER2}"
-: "${APP_PASS2:?Need APP_PASS2}"
-: "${ADMIN_USER:?Need ADMIN_USER}"
-: "${ADMIN_PASS:?Need ADMIN_PASS}"
+: "${NODE1_HOST:?Missing NODE1_HOST}"
+: "${NODE2_HOST:?Missing NODE2_HOST}"
+: "${DB_NAME:?Missing DB_NAME}"
+
+: "${ADMIN_USER1:?Missing ADMIN_USER1}"
+: "${ADMIN_PASS1:?Missing ADMIN_PASS1}"
+
+: "${ADMIN_USER2:?Missing ADMIN_USER2}"
+: "${ADMIN_PASS2:?Missing ADMIN_PASS2}"
+
+: "${APP_USER1:?Missing APP_USER1}"
+: "${APP_PASS1:?Missing APP_PASS1}"
+
+: "${APP_USER2:?Missing APP_USER2}"
+: "${APP_PASS2:?Missing APP_PASS2}"
 
 PORT=5430
 
 # -----------------------------
-# Install PostgreSQL client
+# Install PostgreSQL 17 client
 # -----------------------------
-echo "Installing PostgreSQL client..."
-sudo yum install -y postgresql15 || sudo apt-get install -y postgresql-client
+echo "Installing PostgreSQL 17 client..."
+if command -v yum >/dev/null 2>&1; then
+  sudo yum install -y postgresql17
+elif command -v apt-get >/dev/null 2>&1; then
+  sudo apt-get update
+  sudo apt-get install -y postgresql-client-17
+fi
 
 # -----------------------------
-# Test connectivity Node1 <-> Node2
+# Connectivity Tests
 # -----------------------------
 echo "Testing connectivity to Node1..."
-PGPASSWORD="$ADMIN_PASS" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER" -d "$DB_NAME" -c "SELECT version();" || {
+PGPASSWORD="$ADMIN_PASS1" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER1" -d "$DB_NAME" -c "SELECT version();" || {
   echo "❌ Cannot connect to Node1"
   exit 1
 }
 
 echo "Testing connectivity to Node2..."
-PGPASSWORD="$ADMIN_PASS" psql -h "$NODE2_HOST" -p $PORT -U "$ADMIN_USER" -d "$DB_NAME" -c "SELECT version();" || {
+PGPASSWORD="$ADMIN_PASS2" psql -h "$NODE2_HOST" -p $PORT -U "$ADMIN_USER2" -d "$DB_NAME" -c "SELECT version();" || {
   echo "❌ Cannot connect to Node2"
   exit 1
 }
@@ -44,17 +55,17 @@ echo "✔ Connectivity OK"
 # -----------------------------
 # Create pgactive extension
 # -----------------------------
-echo "Creating pgactive extension on both nodes..."
+echo "Ensuring pgactive extension exists..."
 
-PGPASSWORD="$ADMIN_PASS" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER" -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS pgactive;"
-PGPASSWORD="$ADMIN_PASS" psql -h "$NODE2_HOST" -p $PORT -U "$ADMIN_USER" -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS pgactive;"
+PGPASSWORD="$ADMIN_PASS1" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER1" -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS pgactive;"
+PGPASSWORD="$ADMIN_PASS2" psql -h "$NODE2_HOST" -p $PORT -U "$ADMIN_USER2" -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS pgactive;"
 
 # -----------------------------
 # Create group on Node1
 # -----------------------------
 echo "Creating pgactive group on Node1..."
 
-PGPASSWORD="$ADMIN_PASS" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER" -d "$DB_NAME" <<EOF
+PGPASSWORD="$ADMIN_PASS1" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER1" -d "$DB_NAME" <<EOF
 SELECT pgactive.pgactive_create_group(
     node_name := '${DB_NAME}-endpoint1-app',
     node_dsn  := 'host=${NODE1_HOST} port=${PORT} dbname=${DB_NAME} user=${APP_USER1} password=${APP_PASS1}'
@@ -66,7 +77,7 @@ EOF
 # -----------------------------
 echo "Joining Node2 to pgactive group..."
 
-PGPASSWORD="$ADMIN_PASS" psql -h "$NODE2_HOST" -p $PORT -U "$ADMIN_USER" -d "$DB_NAME" <<EOF
+PGPASSWORD="$ADMIN_PASS2" psql -h "$NODE2_HOST" -p $PORT -U "$ADMIN_USER2" -d "$DB_NAME" <<EOF
 SELECT pgactive.pgactive_join_group(
     node_name      := '${DB_NAME}-endpoint2-app',
     node_dsn       := 'host=${NODE2_HOST} port=${PORT} dbname=${DB_NAME} user=${APP_USER2} password=${APP_PASS2}',
@@ -79,26 +90,6 @@ EOF
 # -----------------------------
 echo "Validating pgactive cluster status..."
 
-PGPASSWORD="$ADMIN_PASS" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER" -d "$DB_NAME" -c "SELECT * FROM pgactive.pgactive_node;"
+PGPASSWORD="$ADMIN_PASS1" psql -h "$NODE1_HOST" -p $PORT -U "$ADMIN_USER1" -d "$DB_NAME" -c "SELECT * FROM pgactive.pgactive_node;"
 
 echo "=== pgactive setup complete ==="
-
-
-
-
-
-
-Before running the script, export these:
-export NODE1_HOST="docmp-accumulator-qa-db-1.chvljaqaz19a.us-gov-west-1.rds.amazonaws.com"
-export NODE2_HOST="docmp-accumulator-qa-db-2.chvljaqaz19a.us-gov-west-1.rds.amazonaws.com"
-
-export DB_NAME="docmp_qa_db1"
-
-export ADMIN_USER="masteruser"
-export ADMIN_PASS="masterpassword"
-
-export APP_USER1="docmpqauser1"
-export APP_PASS1="docmpadmin"
-
-export APP_USER2="docmpqauser2"
-export APP_PASS2="docmpadmin"
