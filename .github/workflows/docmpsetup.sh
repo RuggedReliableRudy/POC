@@ -19,8 +19,9 @@ export APP_USER2="docmpqauser2"
 export APP_PASS2="docmpadmin"
 
 
+
+sudo rpm --import https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG
 sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-sudo yum -qy module disable postgresql
 sudo yum install -y postgresql17
 
 
