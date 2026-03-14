@@ -22,20 +22,6 @@ locals {
 }
 
 ############################################################
-# VPC (YOU ALREADY HAVE ONE)
-############################################################
-variable "vpc_id" {
-  type        = string
-  description = "Existing VPC ID"
-}
-
-variable "master_password" {
-  type        = string
-  sensitive   = true
-  description = "Master password for RDS PostgreSQL"
-}
-
-############################################################
 # EC2 MODULE
 ############################################################
 module "ec2" {
