@@ -1,75 +1,71 @@
-  GitHubActionsRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: project-dev-accumulator-github-actions-iam-role
-      Path: /project/
-      PermissionsBoundary: arn:aws-us-gov:iam::018743596699:policy/vaec/vaec-administrator
+{
+  "Version": "2012-10-17",
+  "Statement": [
 
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRoleWithWebIdentity
-            Principal:
-              Federated: arn:aws-us-gov:iam::018743596699:oidc-provider/token.actions.githubusercontent.com
-            Condition:
-              StringEquals:
-                token.actions.githubusercontent.com:aud: "sts.amazonaws.com"
-              StringLike:
-                token.actions.githubusercontent.com:sub: "repo:software/project-accumulator:*"
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": "arn:aws-us-gov:s3:::project-accumulator-statefile"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws-us-gov:s3:::project-accumulator-statefile/*"
+    },
 
-      Policies:
-        - PolicyName: github-actions-terraform-s3-backend
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                  - s3:GetBucketLocation
-                Resource: arn:aws-us-gov:s3:::project-accumulator-statefile
+    {
+      "Effect": "Allow",
+      "Action": "ec2:*",
+      "Resource": "*"
+    },
 
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: arn:aws-us-gov:s3:::project-accumulator-statefile/*
+    {
+      "Effect": "Allow",
+      "Action": "rds:*",
+      "Resource": "*"
+    },
 
-        - PolicyName: github-actions-terraform-provisioning
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action: "ec2:*"
-                Resource: "*"
+    {
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws-us-gov:iam::018743596699:role/project/*"
+    },
 
-              - Effect: Allow
-                Action: "rds:*"
-                Resource: "*"
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*"
+    },
 
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: arn:aws-us-gov:iam::018743596699:role/project/*
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": "*"
+    },
 
-              - Effect: Allow
-                Action:
-                  - kms:Encrypt
-                  - kms:Decrypt
-                  - kms:GenerateDataKey*
-                  - kms:DescribeKey
-                Resource: "*"
-
-              - Effect: Allow
-                Action:
-                  - secretsmanager:GetSecretValue
-                  - secretsmanager:DescribeSecret
-                Resource: "*"
-
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: "*"
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
