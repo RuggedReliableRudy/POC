@@ -19,7 +19,7 @@ output "rds_security_group_id" {
 
 output "rds_kms_key_arn" {
   description = "KMS key ARN used for RDS encryption"
-  value       = local.rds_kms_key_arn
+  value       = var.kms_key_arn
 }
 
 output "db_name" {

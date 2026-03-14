@@ -1,6 +1,14 @@
+############################################################
+# GLOBAL TAGS
+############################################################
+
 locals {
   common_tags = var.tags
 }
+
+############################################################
+# SECRETS MANAGER LOOKUP
+############################################################
 
 data "aws_secretsmanager_secret" "db_creds" {
   name = var.db_credentials_secret_name
@@ -16,12 +24,17 @@ locals {
   rds_password = local.db_creds.password
 }
 
+############################################################
+# SECURITY GROUP FOR RDS
+############################################################
+
 resource "aws_security_group" "rds_sg" {
   name        = "cpe-rds-sg"
-  description = "RDS access"
+  description = "RDS access from internal VPC"
   vpc_id      = var.vpc_id
 
   ingress {
+    description = "PostgreSQL access"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
@@ -37,6 +50,10 @@ resource "aws_security_group" "rds_sg" {
 
   tags = merge(local.common_tags, { Name = "cpe-rds-sg" })
 }
+
+############################################################
+# RDS INSTANCE NODE 1
+############################################################
 
 resource "aws_db_instance" "node1" {
   identifier              = "dev-docmp-accumulator-db1"
@@ -57,9 +74,14 @@ resource "aws_db_instance" "node1" {
 
   skip_final_snapshot     = true
   publicly_accessible     = false
+  deletion_protection     = false
 
   tags = merge(local.common_tags, { Name = "dev-docmp-accumulator-db1" })
 }
+
+############################################################
+# RDS INSTANCE NODE 2
+############################################################
 
 resource "aws_db_instance" "node2" {
   identifier              = "dev-docmp-accumulator-db12"
@@ -80,6 +102,7 @@ resource "aws_db_instance" "node2" {
 
   skip_final_snapshot     = true
   publicly_accessible     = false
+  deletion_protection     = false
 
   tags = merge(local.common_tags, { Name = "dev-docmp-accumulator-db12" })
 }
