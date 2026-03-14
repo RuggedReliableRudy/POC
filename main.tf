@@ -14,9 +14,15 @@ locals {
 
   db_subnet_group_name = "docmp-accumulator"
 
-  kms_key_arn = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/6df2be77-836b-4016-956f-88d15933485b"
-
   instance_profile_name = "project-ssm-managed-instance"
+
+  # Existing SGs you want to attach to EC2
+  ec2_security_groups = [
+    "sg-0096221c182d74f1f",
+    "sg-0f9f0f86559aab822",
+    "sg-015d512d5b4t1c52c",
+    "sg-046t2639279c75792"
+  ]
 
   common_tags = {
     Environment = "Dev"
@@ -35,7 +41,7 @@ module "ec2" {
   private_subnet_ids    = local.private_subnet_ids
   vpc_id                = local.vpc_id
   instance_profile_name = local.instance_profile_name
-  kms_key_arn           = local.kms_key_arn
+  security_group_ids    = local.ec2_security_groups
 
   tags = local.common_tags
 }
@@ -53,7 +59,6 @@ module "rds" {
   vpc_id                     = local.vpc_id
   db_subnet_group_name       = local.db_subnet_group_name
   db_credentials_secret_name = var.db_credentials_secret_name
-  kms_key_arn                = local.kms_key_arn
 
   tags = local.common_tags
 }

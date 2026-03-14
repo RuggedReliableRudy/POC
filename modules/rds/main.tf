@@ -7,6 +7,24 @@ locals {
 }
 
 ############################################################
+# CREATE KMS KEY FOR RDS
+############################################################
+
+resource "aws_kms_key" "rds_kms" {
+  description         = "KMS key for RDS encryption"
+  enable_key_rotation = true
+
+  tags = merge(local.common_tags, {
+    Name = "rds-kms-key"
+  })
+}
+
+resource "aws_kms_alias" "rds_kms_alias" {
+  name          = "alias/rds-kms-key"
+  target_key_id = aws_kms_key.rds_kms.key_id
+}
+
+############################################################
 # SECRETS MANAGER LOOKUP
 ############################################################
 
@@ -70,7 +88,7 @@ resource "aws_db_instance" "node1" {
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
 
   storage_encrypted       = true
-  kms_key_id              = var.kms_key_arn
+  kms_key_id              = aws_kms_key.rds_kms.arn
 
   skip_final_snapshot     = true
   publicly_accessible     = false
@@ -98,7 +116,7 @@ resource "aws_db_instance" "node2" {
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
 
   storage_encrypted       = true
-  kms_key_id              = var.kms_key_arn
+  kms_key_id              = aws_kms_key.rds_kms.arn
 
   skip_final_snapshot     = true
   publicly_accessible     = false

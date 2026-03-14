@@ -4,12 +4,12 @@
 
 variable "private_subnet_ids" {
   type        = list(string)
-  description = "List of private subnets where EC2 instances may be deployed"
+  description = "List of private subnets for EC2 deployment"
 }
 
 variable "vpc_id" {
   type        = string
-  description = "VPC ID for security group association"
+  description = "VPC ID for EC2 networking"
 }
 
 variable "instance_type" {
@@ -27,19 +27,19 @@ variable "ami_id" {
 variable "allowed_ssh_cidrs" {
   type        = list(string)
   default     = ["10.0.0.0/8"]
-  description = "CIDR blocks allowed to SSH into the EC2 instance"
+  description = "CIDRs allowed SSH access"
 }
 
 variable "allowed_app_cidrs" {
   type        = list(string)
   default     = ["10.0.0.0/8"]
-  description = "CIDR blocks allowed to access the application port"
+  description = "CIDRs allowed to access the application"
 }
 
 variable "app_port" {
   type        = number
   default     = 8080
-  description = "Application port exposed on the EC2 instance"
+  description = "Application port"
 }
 
 variable "instance_profile_name" {
@@ -47,13 +47,13 @@ variable "instance_profile_name" {
   description = "Existing IAM instance profile name"
 }
 
-variable "kms_key_arn" {
-  type        = string
-  description = "Existing KMS key ARN for EC2 root volume encryption"
+variable "security_group_ids" {
+  type        = list(string)
+  description = "Existing security groups to attach to EC2"
 }
 
 variable "tags" {
   type        = map(string)
   default     = {}
-  description = "Common tags applied to all EC2 resources"
+  description = "Common tags"
 }

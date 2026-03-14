@@ -7,7 +7,25 @@ locals {
 }
 
 ############################################################
-# SECURITY GROUP
+# KMS KEY FOR EC2 ROOT VOLUME
+############################################################
+
+resource "aws_kms_key" "ec2_kms" {
+  description         = "KMS key for EC2 root volume encryption"
+  enable_key_rotation = true
+
+  tags = merge(local.common_tags, {
+    Name = "ec2-kms-key"
+  })
+}
+
+resource "aws_kms_alias" "ec2_kms_alias" {
+  name          = "alias/ec2-kms-key"
+  target_key_id = aws_kms_key.ec2_kms.key_id
+}
+
+############################################################
+# SECURITY GROUP (OPTIONAL — REMOVE IF USING EXISTING SGs)
 ############################################################
 
 resource "aws_security_group" "ec2_sg" {
@@ -52,14 +70,16 @@ resource "aws_instance" "cpe_app" {
   # Use the FIRST private subnet
   subnet_id              = var.private_subnet_ids[0]
 
+  # If using existing SGs, replace with: var.security_group_ids
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+
   iam_instance_profile   = var.instance_profile_name
 
   root_block_device {
-    volume_size = 30
+    volume_size = 60
     volume_type = "gp3"
     encrypted   = true
-    kms_key_id  = var.kms_key_arn
+    kms_key_id  = aws_kms_key.ec2_kms.arn
   }
 
   tags = merge(local.common_tags, { Name = "docmp-accumulator-dev" })
@@ -79,4 +99,8 @@ output "private_ip" {
 
 output "iam_instance_profile" {
   value = var.instance_profile_name
+}
+
+output "kms_key_arn" {
+  value = aws_kms_key.ec2_kms.arn
 }
