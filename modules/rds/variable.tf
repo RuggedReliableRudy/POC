@@ -4,7 +4,7 @@
 
 variable "engine_version" {
   type        = string
-  description = "PostgreSQL engine version"
+  description = "PostgreSQL engine version for RDS instances"
 }
 
 variable "instance_class" {
@@ -14,7 +14,7 @@ variable "instance_class" {
 
 variable "db_name" {
   type        = string
-  description = "Initial database name"
+  description = "Initial database name to create on both RDS nodes"
 }
 
 variable "master_username" {
@@ -24,18 +24,18 @@ variable "master_username" {
 
 variable "master_password" {
   type        = string
-  description = "Master password for RDS"
   sensitive   = true
+  description = "Master password for RDS"
 }
 
 variable "vpc_id" {
   type        = string
-  description = "VPC ID for RDS security group"
+  description = "VPC ID where RDS security group will be created"
 }
 
 variable "db_subnet_group_name" {
   type        = string
-  description = "Subnet group name for RDS"
+  description = "Name of the RDS subnet group (e.g., docmp-accumulator)"
 }
 
 variable "kms_key_arn" {

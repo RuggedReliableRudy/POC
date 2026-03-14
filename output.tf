@@ -1,23 +1,17 @@
-###############################################
-# EC2 Outputs
-###############################################
-
-output "app_ec2_private_ip" {
-  description = "Private IP address of the application EC2 instance"
-  value       = module.app_ec2.private_ip
+############################################################
+# OUTPUTS FOR GITHUB ACTIONS
+############################################################
+output "private_ip" {
+  description = "EC2 private IP for Ansible deployment"
+  value       = module.ec2.private_ip
 }
 
-
-###############################################
-# RDS Outputs
-###############################################
-
-output "rds_endpoint_1" {
-  description = "Endpoint for RDS PostgreSQL active-active node 1"
-  value       = module.rds_active_active.db_endpoint_1
+output "db_endpoint_1" {
+  description = "Primary RDS endpoint"
+  value       = module.rds.db_endpoint_1
 }
 
-output "rds_endpoint_2" {
-  description = "Endpoint for RDS PostgreSQL active-active node 2"
-  value       = module.rds_active_active.db_endpoint_2
+output "db_endpoint_2" {
+  description = "Secondary RDS endpoint"
+  value       = module.rds.db_endpoint_2
 }

@@ -10,17 +10,29 @@ locals {
 }
 
 ############################################################
-# NETWORK MODULE (if you already have one)
+# EXISTING SUBNETS (NO PUBLIC SUBNETS CREATED)
 ############################################################
-module "network" {
-  source = "./modules/network"
+locals {
+  private_subnet_ids = [
+    "subnet-0acefeb6a9825fb5b",
+    "subnet-099ac7c0bf429081f",
+    "subnet-08d141bf2f954a835",
+    "subnet-06dfb8065d398498c"
+  ]
+}
 
-  # Example variables — adjust to your actual module
-  vpc_cidr_block = "10.0.0.0/16"
-  public_subnets  = ["10.0.1.0/24"]
-  private_subnets = ["10.0.2.0/24"]
+############################################################
+# VPC (YOU ALREADY HAVE ONE)
+############################################################
+variable "vpc_id" {
+  type        = string
+  description = "Existing VPC ID"
+}
 
-  tags = local.common_tags
+variable "master_password" {
+  type        = string
+  sensitive   = true
+  description = "Master password for RDS PostgreSQL"
 }
 
 ############################################################
@@ -29,8 +41,8 @@ module "network" {
 module "ec2" {
   source = "./modules/ec2"
 
-  private_subnet_id = module.network.private_subnet_id
-  vpc_id            = module.network.vpc_id
+  private_subnet_id = local.private_subnet_ids[0]   # EC2 goes in first private subnet
+  vpc_id            = var.vpc_id
 
   ami_id            = "ami-04e976f26321f1ec5"
   instance_type     = "t3.medium"
@@ -41,6 +53,19 @@ module "ec2" {
   app_port          = 8080
 
   tags = local.common_tags
+}
+
+############################################################
+# RDS SUBNET GROUP (REQUIRED FOR RDS)
+############################################################
+resource "aws_db_subnet_group" "accumulator_subnets" {
+  name       = "docmp-accumulator"
+  subnet_ids = local.private_subnet_ids
+
+  tags = merge(
+    local.common_tags,
+    { Name = "docmp-accumulator" }
+  )
 }
 
 ############################################################
@@ -55,30 +80,10 @@ module "rds" {
   master_username      = "postgres"
   master_password      = var.master_password
 
-  vpc_id               = module.network.vpc_id
-  db_subnet_group_name = module.network.db_subnet_group_name
+  vpc_id               = var.vpc_id
+  db_subnet_group_name = aws_db_subnet_group.accumulator_subnets.name
 
-  # Optional external KMS key
   kms_key_arn = null
 
   tags = local.common_tags
-}
-
-############################################################
-# OUTPUTS FOR GITHUB ACTIONS
-############################################################
-
-output "private_ip" {
-  description = "EC2 private IP for Ansible deployment"
-  value       = module.ec2.private_ip
-}
-
-output "db_endpoint_1" {
-  description = "Primary RDS endpoint"
-  value       = module.rds.db_endpoint_1
-}
-
-output "db_endpoint_2" {
-  description = "Secondary RDS endpoint"
-  value       = module.rds.db_endpoint_2
 }
