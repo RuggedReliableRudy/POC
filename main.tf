@@ -19,6 +19,9 @@ locals {
     "subnet-08d141bf2f954a835",
     "subnet-06dfb8065d398498c"
   ]
+
+  # NEW — Hardcoded VPC ID (no prompting, no secrets)
+  vpc_id = "vpc-0bb67cf591eb840c2"
 }
 
 ############################################################
@@ -28,7 +31,7 @@ module "ec2" {
   source = "./modules/ec2"
 
   private_subnet_id = local.private_subnet_ids[0]   # EC2 goes in first private subnet
-  vpc_id            = var.vpc_id
+  vpc_id            = local.vpc_id
 
   ami_id            = "ami-04e976f26321f1ec5"
   instance_type     = "t3.medium"
@@ -64,10 +67,10 @@ module "rds" {
   instance_class       = "db.t3.medium"
   db_name              = "accumulatordb"
 
-  # NEW — Secrets Manager integration
+  # Secrets Manager integration
   db_credentials_secret_name = "accumulator"
 
-  vpc_id               = var.vpc_id
+  vpc_id               = local.vpc_id
   db_subnet_group_name = aws_db_subnet_group.accumulator_subnets.name
 
   kms_key_arn = null
