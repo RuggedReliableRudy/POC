@@ -65,31 +65,6 @@ Resources:
                 Action: iam:PassRole
                 Resource: arn:aws-us-gov:iam::018743596699:role/project/*
 
-              # KMS permissions (FULL)
-              - Effect: Allow
-                Action:
-                  - kms:CreateKey
-                  - kms:ScheduleKeyDeletion
-                  - kms:PutKeyPolicy
-                  - kms:GetKeyPolicy
-                  - kms:EnableKeyRotation
-                  - kms:GetKeyRotationStatus
-                  - kms:CreateAlias
-                  - kms:DeleteAlias
-                  - kms:ListAliases
-                  - kms:TagResource
-                  - kms:UntagResource
-                  - kms:ListResourceTags
-                  - kms:Encrypt
-                  - kms:Decrypt
-                  - kms:GenerateDataKey
-                  - kms:GenerateDataKeyWithoutPlaintext
-                  - kms:GenerateDataKeyPair
-                  - kms:GenerateDataKeyPairWithoutPlaintext
-                  - kms:DescribeKey
-                  - kms:ListKeys
-                Resource: "*"
-
               # Secrets Manager access
               - Effect: Allow
                 Action:
@@ -108,4 +83,48 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogGroups
                   - logs:DescribeLogStreams
+                Resource: "*"
+
+        # ---------------------------------------------------------
+        # FULL KMS PERMISSIONS (ALL REQUIRED FOR TERRAFORM)
+        # ---------------------------------------------------------
+        - PolicyName: github-actions-kms-full
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  # Key creation + deletion
+                  - kms:CreateKey
+                  - kms:ScheduleKeyDeletion
+
+                  # Key policy management
+                  - kms:PutKeyPolicy
+                  - kms:GetKeyPolicy
+
+                  # Key rotation
+                  - kms:EnableKeyRotation
+                  - kms:GetKeyRotationStatus
+
+                  # Aliases
+                  - kms:CreateAlias
+                  - kms:DeleteAlias
+                  - kms:ListAliases
+
+                  # Tagging
+                  - kms:TagResource
+                  - kms:UntagResource
+                  - kms:ListResourceTags
+
+                  # Encryption operations
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                  - kms:GenerateDataKeyWithoutPlaintext
+                  - kms:GenerateDataKeyPair
+                  - kms:GenerateDataKeyPairWithoutPlaintext
+
+                  # Describe
+                  - kms:DescribeKey
+                  - kms:ListKeys
                 Resource: "*"

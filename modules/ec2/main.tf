@@ -6,22 +6,9 @@ locals {
   common_tags = var.tags
 }
 
-############################################################
-# KMS KEY FOR EC2 ROOT VOLUME
-############################################################
-
-resource "aws_kms_key" "ec2_kms" {
-  description         = "KMS key for EC2 root volume encryption"
-  enable_key_rotation = true
-
-  tags = merge(local.common_tags, {
-    Name = "ec2-kms-key"
-  })
-}
-
-resource "aws_kms_alias" "ec2_kms_alias" {
-  name          = "alias/ec2-kms-key"
-  target_key_id = aws_kms_key.ec2_kms.key_id
+# Use existing KMS key for EC2
+locals {
+  kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/76639fe4-775e-474c-9fd3-afa872268b5c"
 }
 
 ############################################################
@@ -79,28 +66,8 @@ resource "aws_instance" "cpe_app" {
     volume_size = 60
     volume_type = "gp3"
     encrypted   = true
-    kms_key_id  = aws_kms_key.ec2_kms.arn
+    kms_key_id  = local.kms_key_id
   }
 
   tags = merge(local.common_tags, { Name = "docmp-accumulator-dev" })
-}
-
-############################################################
-# OUTPUTS
-############################################################
-
-output "instance_id" {
-  value = aws_instance.cpe_app.id
-}
-
-output "private_ip" {
-  value = aws_instance.cpe_app.private_ip
-}
-
-output "iam_instance_profile" {
-  value = var.instance_profile_name
-}
-
-output "kms_key_arn" {
-  value = aws_kms_key.ec2_kms.arn
 }
