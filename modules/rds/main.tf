@@ -2,11 +2,7 @@
 # GLOBAL TAGS
 ############################################################
 locals {
-  common_tags = {
-    Environment = "Dev"
-    Repository  = "Project-Accumulator"
-    ManagedBy   = "Terraform"
-  }
+  common_tags = var.tags
 }
 
 ############################################################
@@ -19,17 +15,21 @@ variable "db_name"              { type = string }
 variable "vpc_id"               { type = string }
 variable "db_subnet_group_name" { type = string }
 
-# NEW: Secret name for DB credentials
 variable "db_credentials_secret_name" {
   type        = string
   description = "Name of Secrets Manager secret containing { username, password }"
 }
 
-# Optional external KMS key
 variable "kms_key_arn" {
   type        = string
   default     = null
   description = "Optional external KMS key ARN for RDS encryption"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to all RDS resources"
+  default     = {}
 }
 
 ############################################################
@@ -45,8 +45,7 @@ data "aws_secretsmanager_secret_version" "db_creds_version" {
 }
 
 locals {
-  db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_creds_version.secret_string)
-
+  db_creds     = jsondecode(data.aws_secretsmanager_secret_version.db_creds_version.secret_string)
   rds_username = local.db_creds.username
   rds_password = local.db_creds.password
 }
@@ -124,7 +123,7 @@ resource "aws_security_group" "rds_sg" {
 }
 
 ############################################################
-# RDS NODE 1 — dev-docmp-accumulator-db1
+# RDS NODE 1
 ############################################################
 
 resource "aws_db_instance" "node1" {
@@ -156,7 +155,7 @@ resource "aws_db_instance" "node1" {
 }
 
 ############################################################
-# RDS NODE 2 — dev-docmp-accumulator-db12
+# RDS NODE 2
 ############################################################
 
 resource "aws_db_instance" "node2" {
@@ -176,10 +175,10 @@ resource "aws_db_instance" "node2" {
   storage_encrypted       = true
   kms_key_id              = local.rds_kms_key_arn
 
-  skip_final_final_snapshot = true
-  publicly_accessible       = false
-  multi_az                  = false
-  deletion_protection       = false
+  skip_final_snapshot     = true
+  publicly_accessible     = false
+  multi_az                = false
+  deletion_protection     = false
 
   tags = merge(
     local.common_tags,

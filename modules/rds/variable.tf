@@ -28,7 +28,7 @@ variable "db_subnet_group_name" {
 }
 
 ############################################################
-# NEW — Secrets Manager Integration
+# SECRETS MANAGER INTEGRATION
 ############################################################
 
 variable "db_credentials_secret_name" {
