@@ -1,7 +1,18 @@
 ############################################################
-# GLOBAL TAGS
+# GLOBAL LOCALS
 ############################################################
+
 locals {
+  vpc_id = "vpc-0f1b4f7f8e9d12345"
+
+  private_subnet_id = "subnet-0a1b2c3d4e5f67890"
+
+  db_subnet_group_name = "docmp-accumulator"
+
+  kms_key_arn = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/6df2be77-836b-4016-956f-88d15933485b"
+
+  instance_profile_name = "project-ssm-managed-instance"
+
   common_tags = {
     Environment = "Dev"
     Repository  = "Project-Accumulator"
@@ -10,70 +21,34 @@ locals {
 }
 
 ############################################################
-# EXISTING SUBNETS (NO PUBLIC SUBNETS CREATED)
-############################################################
-locals {
-  private_subnet_ids = [
-    "subnet-0acefeb6a9825fb5b",
-    "subnet-099ac7c0bf429081f",
-    "subnet-08d141bf2f954a835",
-    "subnet-06dfb8065d398498c"
-  ]
-
-  # NEW — Hardcoded VPC ID (no prompting, no secrets)
-  vpc_id = "vpc-0bb67cf591eb840c2"
-}
-
-############################################################
 # EC2 MODULE
 ############################################################
+
 module "ec2" {
   source = "./modules/ec2"
 
-  private_subnet_id = local.private_subnet_ids[0]   # EC2 goes in first private subnet
-  vpc_id            = local.vpc_id
-
-  ami_id            = "ami-04e976f26321f1ec5"
-  instance_type     = "t3.medium"
-  iam_role_name     = "project-ssm-managed-instance"
-
-  allowed_ssh_cidrs = ["10.0.0.0/8"]
-  allowed_app_cidrs = ["10.0.0.0/8"]
-  app_port          = 8080
+  private_subnet_id     = local.private_subnet_id
+  vpc_id                = local.vpc_id
+  instance_profile_name = local.instance_profile_name
+  kms_key_arn           = local.kms_key_arn
 
   tags = local.common_tags
 }
 
 ############################################################
-# RDS SUBNET GROUP (REQUIRED FOR RDS)
+# RDS MODULE
 ############################################################
-resource "aws_db_subnet_group" "accumulator_subnets" {
-  name       = "docmp-accumulator"
-  subnet_ids = local.private_subnet_ids
 
-  tags = merge(
-    local.common_tags,
-    { Name = "docmp-accumulator" }
-  )
-}
-
-############################################################
-# RDS MODULE (UPDATED TO USE SECRETS MANAGER)
-############################################################
 module "rds" {
   source = "./modules/rds"
 
-  engine_version       = "17.6"
-  instance_class       = "db.t3.medium"
-  db_name              = "accumulatordb"
-
-  # Secrets Manager integration
-  db_credentials_secret_name = "accumulator"
-
-  vpc_id               = local.vpc_id
-  db_subnet_group_name = aws_db_subnet_group.accumulator_subnets.name
-
-  kms_key_arn = null
+  engine_version            = "15.3"
+  instance_class            = "db.t3.medium"
+  db_name                   = "accumulator"
+  vpc_id                    = local.vpc_id
+  db_subnet_group_name      = local.db_subnet_group_name
+  db_credentials_secret_name = var.db_credentials_secret_name
+  kms_key_arn               = local.kms_key_arn
 
   tags = local.common_tags
 }
