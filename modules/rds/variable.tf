@@ -4,42 +4,54 @@
 
 variable "engine_version" {
   type        = string
-  description = "PostgreSQL engine version for RDS instances"
+  description = "PostgreSQL engine version for the RDS instances"
 }
 
 variable "instance_class" {
   type        = string
-  description = "RDS instance class"
+  description = "Instance class for the RDS PostgreSQL instances"
 }
 
 variable "db_name" {
   type        = string
-  description = "Initial database name to create on both RDS nodes"
-}
-
-variable "master_username" {
-  type        = string
-  description = "Master username for RDS"
-}
-
-variable "master_password" {
-  type        = string
-  sensitive   = true
-  description = "Master password for RDS"
+  description = "Initial database name to create"
 }
 
 variable "vpc_id" {
   type        = string
-  description = "VPC ID where RDS security group will be created"
+  description = "VPC ID where RDS instances will be deployed"
 }
 
 variable "db_subnet_group_name" {
   type        = string
-  description = "Name of the RDS subnet group (e.g., docmp-accumulator)"
+  description = "Name of the DB subnet group for RDS"
 }
+
+############################################################
+# NEW — Secrets Manager Integration
+############################################################
+
+variable "db_credentials_secret_name" {
+  type        = string
+  description = "Name of Secrets Manager secret containing JSON { username, password }"
+}
+
+############################################################
+# OPTIONAL KMS KEY
+############################################################
 
 variable "kms_key_arn" {
   type        = string
   default     = null
-  description = "Optional external KMS key ARN for RDS encryption"
+  description = "Optional external KMS key ARN for RDS encryption. If null, module creates its own key."
+}
+
+############################################################
+# TAGS
+############################################################
+
+variable "tags" {
+  type        = map(string)
+  default     = {}
+  description = "Common tags applied to all RDS resources"
 }

@@ -55,16 +55,17 @@ resource "aws_db_subnet_group" "accumulator_subnets" {
 }
 
 ############################################################
-# RDS MODULE
+# RDS MODULE (UPDATED TO USE SECRETS MANAGER)
 ############################################################
 module "rds" {
   source = "./modules/rds"
 
-  engine_version       = "15.3"
+  engine_version       = "17.6"
   instance_class       = "db.t3.medium"
   db_name              = "accumulatordb"
-  master_username      = "postgres"
-  master_password      = var.master_password
+
+  # NEW — Secrets Manager integration
+  db_credentials_secret_name = "accumulator"
 
   vpc_id               = var.vpc_id
   db_subnet_group_name = aws_db_subnet_group.accumulator_subnets.name

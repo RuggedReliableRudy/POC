@@ -13,19 +13,42 @@ locals {
 # VARIABLES
 ############################################################
 
-variable "engine_version"         { type = string }
-variable "instance_class"         { type = string }
-variable "db_name"                { type = string }
-variable "master_username"        { type = string }
-variable "master_password"        { type = string }
-variable "vpc_id"                 { type = string }
-variable "db_subnet_group_name"   { type = string }
+variable "engine_version"       { type = string }
+variable "instance_class"       { type = string }
+variable "db_name"              { type = string }
+variable "vpc_id"               { type = string }
+variable "db_subnet_group_name" { type = string }
+
+# NEW: Secret name for DB credentials
+variable "db_credentials_secret_name" {
+  type        = string
+  description = "Name of Secrets Manager secret containing { username, password }"
+}
 
 # Optional external KMS key
 variable "kms_key_arn" {
   type        = string
   default     = null
   description = "Optional external KMS key ARN for RDS encryption"
+}
+
+############################################################
+# SECRETS MANAGER LOOKUP
+############################################################
+
+data "aws_secretsmanager_secret" "db_creds" {
+  name = var.db_credentials_secret_name
+}
+
+data "aws_secretsmanager_secret_version" "db_creds_version" {
+  secret_id = data.aws_secretsmanager_secret.db_creds.id
+}
+
+locals {
+  db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_creds_version.secret_string)
+
+  rds_username = local.db_creds.username
+  rds_password = local.db_creds.password
 }
 
 ############################################################
@@ -112,8 +135,8 @@ resource "aws_db_instance" "node1" {
   allocated_storage       = 50
 
   db_name                 = var.db_name
-  username                = var.master_username
-  password                = var.master_password
+  username                = local.rds_username
+  password                = local.rds_password
 
   db_subnet_group_name    = var.db_subnet_group_name
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
@@ -144,8 +167,8 @@ resource "aws_db_instance" "node2" {
   allocated_storage       = 50
 
   db_name                 = var.db_name
-  username                = var.master_username
-  password                = var.master_password
+  username                = local.rds_username
+  password                = local.rds_password
 
   db_subnet_group_name    = var.db_subnet_group_name
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
@@ -153,14 +176,13 @@ resource "aws_db_instance" "node2" {
   storage_encrypted       = true
   kms_key_id              = local.rds_kms_key_arn
 
-  skip_final_snapshot     = true
-  publicly_accessible     = false
-  multi_az                = false
-  deletion_protection     = false
+  skip_final_final_snapshot = true
+  publicly_accessible       = false
+  multi_az                  = false
+  deletion_protection       = false
 
   tags = merge(
     local.common_tags,
     { Name = "dev-docmp-accumulator-db12" }
   )
 }
-
