@@ -1,87 +1,84 @@
-name: Build and Deploy CPE
+name: Deploy Accumulator App
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build:
+  terraform:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+      - name: Export Terraform Outputs
+        id: tfout
+        run: |
+          echo "EC2_PRIVATE_IP=$(terraform output -raw private_ip)" >> $GITHUB_ENV
+          echo "DB_ENDPOINT_1=$(terraform output -raw db_endpoint_1)" >> $GITHUB_ENV
+          echo "DB_ENDPOINT_2=$(terraform output -raw db_endpoint_2)" >> $GITHUB_ENV
+
+  build:
+    needs: terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: "temurin"
           java-version: "17"
 
-      - name: Grant execute permission for Gradle
-        run: chmod +x gradlew
-
-      - name: Build with Gradle
+      - name: Build JAR
         run: ./gradlew clean build
-
-      - name: Rename artifact to Cpe.1.0.0jar
-        run: |
-          mkdir -p artifact
-          cp build/libs/*.jar artifact/Cpe.1.0.0jar
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cpe-jar
-          path: artifact/Cpe.1.0.0jar
+          name: accumulator-jar
+          path: build/libs/AccumulatorLoad-1.0.0.jar
 
   deploy:
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.6
-
-      - name: Terraform Init
-        run: terraform -chdir=terraform init
-
-      # Assumes infra is already applied (apply happens in a separate pipeline or manually)
-      # If you want this job to also apply, add a terraform apply step before outputs.
-
-      - name: Get EC2 private IP and RDS endpoints from Terraform
-        run: |
-          echo "EC2_IP=$(terraform -chdir=terraform output -raw app_ec2_private_ip)" >> $GITHUB_ENV
-          echo "DB_NODE1=$(terraform -chdir=terraform output -raw rds_endpoint_1)" >> $GITHUB_ENV
-          echo "DB_NODE2=$(terraform -chdir=terraform output -raw rds_endpoint_2)" >> $GITHUB_ENV
-
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: cpe-jar
-          path: ./ansible
+          name: accumulator-jar
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Ansible
-        run: |
-          python -m pip install --upgrade pip
-          pip install ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
 
-      - name: Prepare inventory
-        working-directory: ansible
+      - name: Add EC2 host to inventory
         run: |
-          echo "[cpe_app]" > inventory.ini
-          echo "cpe-app-ec2 ansible_host=${EC2_IP} ansible_user=ec2-user" >> inventory.ini
+          echo "[accumulator]" > inventory
+          echo "${{ env.EC2_PRIVATE_IP }}" >> inventory
+
+      - name: Copy SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
 
       - name: Run Ansible playbook
-        working-directory: ansible
-        env:
-          CPE_DB_NODE1: ${{ env.DB_NODE1 }}
-          CPE_DB_NODE2: ${{ env.DB_NODE2 }}
         run: |
-          ansible-playbook -i inventory.ini site.yml \
-            --extra-vars "jar_name=Cpe.1.0.0jar"
+          ansible-playbook -i inventory ansible/deploy.yml \
+            --private-key key.pem \
+            --user ec2-user

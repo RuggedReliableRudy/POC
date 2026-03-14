@@ -1,0 +1,23 @@
+############################################################
+# RDS MODULE OUTPUTS
+############################################################
+
+output "db_endpoint_1" {
+  description = "Endpoint for RDS instance 1"
+  value       = aws_db_instance.node1.address
+}
+
+output "db_endpoint_2" {
+  description = "Endpoint for RDS instance 2"
+  value       = aws_db_instance.node2.address
+}
+
+output "rds_kms_key_arn" {
+  description = "KMS key ARN used for RDS encryption"
+  value       = local.rds_kms_key_arn
+}
+
+output "rds_security_group_id" {
+  description = "Security group ID for RDS"
+  value       = aws_security_group.rds_sg.id
+}

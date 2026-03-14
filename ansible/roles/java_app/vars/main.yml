@@ -1,0 +1,15 @@
+---
+# Application JAR file name
+jar_name: "AccumulatorLoad-1.0.0.jar"
+
+# Application installation directory
+app_dir: "/opt/cpe-app"
+
+# Systemd service name
+service_name: "cpe-app"
+
+# Java executable path
+java_exec: "/usr/bin/java"
+
+# User that runs the service
+app_user: "ec2-user"

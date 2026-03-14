@@ -1,66 +1,37 @@
-variable "vpc_id"             { type = string }
-variable "private_subnet_ids" { type = list(string) }
-variable "instance_name"      { type = string }
-variable "instance_type"      { type = string }
-variable "rds_endpoints"      { type = list(string) }
-
-data "aws_ami" "amazon_linux_2" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+############################################################
+# GLOBAL TAGS
+############################################################
+locals {
+  common_tags = {
+    Environment = "Dev"
+    Repository  = "Project-Accumulator"
+    ManagedBy   = "Terraform"
   }
 }
 
-resource "aws_iam_role" "ec2_role" {
-  name = "cpe-app-ec2-role"
+############################################################
+# SECURITY GROUP FOR EC2
+############################################################
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "secrets_policy" {
-  name = "cpe-app-secrets-policy"
-  role = aws_iam_role.ec2_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue"]
-        Resource = "arn:aws-us-gov:secretsmanager:us-gov-west-1:018743596699:secret:accumulator*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "cpe-app-ec2-profile"
-  role = aws_iam_role.ec2_role.name
-}
-
-resource "aws_security_group" "app_sg" {
-  name        = "cpe-app-sg"
-  description = "App EC2 SG"
+resource "aws_security_group" "ec2_sg" {
+  name        = "cpe-ec2-sg"
+  description = "Security group for CPE EC2 instance"
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "SSH from VPC"
+    description = "Allow SSH from VPC"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"] # adjust
+    cidr_blocks = var.allowed_ssh_cidrs
+  }
+
+  ingress {
+    description = "Allow app traffic"
+    from_port   = var.app_port
+    to_port     = var.app_port
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_app_cidrs
   }
 
   egress {
@@ -69,27 +40,66 @@ resource "aws_security_group" "app_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = merge(
+    local.common_tags,
+    { Name = "cpe-ec2-sg" }
+  )
 }
 
-resource "aws_instance" "app" {
-  ami                    = data.aws_ami.amazon_linux_2.id
-  instance_type          = var.instance_type
-  subnet_id              = var.private_subnet_ids[0]
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+############################################################
+# IAM INSTANCE PROFILE (existing role)
+############################################################
 
-  tags = {
-    Name = var.instance_name
-    Role = "cpe-app"
+resource "aws_iam_instance_profile" "cpe_ec2_profile" {
+  name = "project-ssm-managed-instance-profile"
+  role = var.iam_role_name
+
+  tags = merge(
+    local.common_tags,
+    { Name = "cpe-ec2-instance-profile" }
+  )
+}
+
+############################################################
+# KMS KEY FOR EC2 ROOT VOLUME ENCRYPTION
+############################################################
+
+resource "aws_kms_key" "ec2_kms" {
+  description         = "KMS key for EC2 root volume encryption"
+  enable_key_rotation = true
+
+  tags = merge(
+    local.common_tags,
+    { Name = "cpe-ec2-kms" }
+  )
+}
+
+resource "aws_kms_alias" "ec2_kms_alias" {
+  name          = "alias/cpe-ec2-kms"
+  target_key_id = aws_kms_key.ec2_kms.key_id
+}
+
+############################################################
+# EC2 INSTANCE
+############################################################
+
+resource "aws_instance" "cpe_app" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.private_subnet_id
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.cpe_ec2_profile.name
+
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+    encrypted   = true
+    kms_key_id  = aws_kms_key.ec2_kms.arn
   }
 
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y java-17-amazon-corretto-headless git postgresql15 jq awscli
-              EOF
-}
-
-output "private_ip" {
-  value = aws_instance.app.private_ip
+  tags = merge(
+    local.common_tags,
+    { Name = "docmp-accumulator-dev" }
+  )
 }

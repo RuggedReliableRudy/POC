@@ -1,5 +1,5 @@
 ---
-- name: Create app directory
+- name: Ensure application directory exists
   file:
     path: /opt/cpe-app
     state: directory
@@ -9,33 +9,40 @@
 
 - name: Copy JAR from CI artifact location
   copy:
-    src: "{{ jar_name }}"
-    dest: "/opt/cpe-app/{{ jar_name }}"
+    src: "AccumulatorLoad-1.0.0.jar"
+    dest: "/opt/cpe-app/AccumulatorLoad-1.0.0.jar"
+    owner: ec2-user
+    group: ec2-user
     mode: "0755"
 
-- name: Create systemd service
+- name: Create systemd service for Accumulator App
   copy:
     dest: /etc/systemd/system/cpe-app.service
+    mode: "0644"
     content: |
       [Unit]
-      Description=CPE App
+      Description=Accumulator Load Service
       After=network.target
 
       [Service]
       User=ec2-user
       WorkingDirectory=/opt/cpe-app
-      ExecStart=/usr/bin/java -jar /opt/cpe-app/{{ jar_name }}
+      ExecStart=/usr/bin/java -jar /opt/cpe-app/AccumulatorLoad-1.0.0.jar
       Restart=always
+      RestartSec=5
 
       [Install]
       WantedBy=multi-user.target
 
-- name: Reload systemd
-  systemd:
-    daemon_reload: yes
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
 
-- name: Enable and start app
+- name: Enable service on boot
   systemd:
     name: cpe-app
     enabled: yes
+
+- name: Start Accumulator service
+  systemd:
+    name: cpe-app
     state: started
