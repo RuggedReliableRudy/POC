@@ -7,8 +7,8 @@ variable "vpc_id" {
   description = "Existing VPC ID where EC2 and RDS will be deployed"
 }
 
-variable "master_password" {
+variable "db_credentials_secret_name" {
   type        = string
-  description = "Master password for RDS PostgreSQL"
-  sensitive   = true
+  description = "Name of Secrets Manager secret containing JSON { username, password }"
+  default     = "accumulator"
 }
