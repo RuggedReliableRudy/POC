@@ -6,33 +6,6 @@ locals {
 }
 
 ############################################################
-# VARIABLES
-############################################################
-
-variable "engine_version"       { type = string }
-variable "instance_class"       { type = string }
-variable "db_name"              { type = string }
-variable "vpc_id"               { type = string }
-variable "db_subnet_group_name" { type = string }
-
-variable "db_credentials_secret_name" {
-  type        = string
-  description = "Name of Secrets Manager secret containing { username, password }"
-}
-
-variable "kms_key_arn" {
-  type        = string
-  default     = null
-  description = "Optional external KMS key ARN for RDS encryption"
-}
-
-variable "tags" {
-  type        = map(string)
-  description = "Tags to apply to all RDS resources"
-  default     = {}
-}
-
-############################################################
 # SECRETS MANAGER LOOKUP
 ############################################################
 
