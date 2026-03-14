@@ -1,6 +1,14 @@
+############################################################
+# GLOBAL TAGS
+############################################################
+
 locals {
   common_tags = var.tags
 }
+
+############################################################
+# SECURITY GROUP
+############################################################
 
 resource "aws_security_group" "ec2_sg" {
   name        = "cpe-ec2-sg"
@@ -8,6 +16,7 @@ resource "aws_security_group" "ec2_sg" {
   vpc_id      = var.vpc_id
 
   ingress {
+    description = "SSH access"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -15,6 +24,7 @@ resource "aws_security_group" "ec2_sg" {
   }
 
   ingress {
+    description = "Application port"
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
@@ -31,10 +41,17 @@ resource "aws_security_group" "ec2_sg" {
   tags = merge(local.common_tags, { Name = "cpe-ec2-sg" })
 }
 
+############################################################
+# EC2 INSTANCE
+############################################################
+
 resource "aws_instance" "cpe_app" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
-  subnet_id              = var.private_subnet_id
+
+  # Use the FIRST private subnet
+  subnet_id              = var.private_subnet_ids[0]
+
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   iam_instance_profile   = var.instance_profile_name
 
@@ -46,4 +63,20 @@ resource "aws_instance" "cpe_app" {
   }
 
   tags = merge(local.common_tags, { Name = "docmp-accumulator-dev" })
+}
+
+############################################################
+# OUTPUTS
+############################################################
+
+output "instance_id" {
+  value = aws_instance.cpe_app.id
+}
+
+output "private_ip" {
+  value = aws_instance.cpe_app.private_ip
+}
+
+output "iam_instance_profile" {
+  value = var.instance_profile_name
 }
