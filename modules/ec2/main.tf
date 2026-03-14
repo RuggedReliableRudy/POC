@@ -2,11 +2,7 @@
 # GLOBAL TAGS
 ############################################################
 locals {
-  common_tags = {
-    Environment = "Dev"
-    Repository  = "Project-Accumulator"
-    ManagedBy   = "Terraform"
-  }
+  common_tags = var.tags
 }
 
 ############################################################
