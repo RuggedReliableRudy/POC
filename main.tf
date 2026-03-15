@@ -16,13 +16,6 @@ locals {
 
   instance_profile_name = "project-ssm-managed-instance"
 
-  ec2_security_groups = [
-    "sg-0096221c182d74f1f",
-    "sg-0f9f0f86559aab822",
-    "sg-015d512d5b4t1c52c",
-    "sg-046t2639279c75792"
-  ]
-
   kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/76639fe4-775e-474c-9fd3-afa872268b5c"
 
   common_tags = {
@@ -42,13 +35,12 @@ module "ec2" {
   private_subnet_ids    = local.private_subnet_ids
   vpc_id                = local.vpc_id
   instance_profile_name = local.instance_profile_name
-  security_group_ids    = local.ec2_security_groups
 
   tags = local.common_tags
 }
 
 ############################################################
-# RDS MODULE (UPDATED)
+# RDS MODULE
 ############################################################
 
 module "rds" {
@@ -66,20 +58,16 @@ module "rds" {
 
   kms_key_arn                = local.kms_key_id
 
-   parameter_group_name       = "accumulator-postgres17"
+  parameter_group_name       = "accumulator-postgres17"
+
+  # ⭐ Pass EC2 SG ID to RDS module so it can create the rule
+  ec2_security_group_id      = module.ec2.ec2_sg_id
 
   tags = local.common_tags
 }
 
 ############################################################
-# SECURITY GROUP LINK: EC2 → RDS
+# ⭐ NO SECURITY GROUP RULES IN ROOT
 ############################################################
-
-resource "aws_security_group_rule" "allow_ec2_to_rds" {
-  type                     = "ingress"
-  from_port                = 5430
-  to_port                  = 5430
-  protocol                 = "tcp"
-  security_group_id        = module.rds.rds_sg_id
-  source_security_group_id = local.ec2_security_groups[0]
-}
+# The EC2 → RDS rule is created inside the RDS module,
+# because that is where the RDS SG is defined.

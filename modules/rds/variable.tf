@@ -27,6 +27,11 @@ variable "db_subnet_group_name" {
   description = "Existing DB subnet group name"
 }
 
+variable "ec2_security_group_id" {
+  type        = string
+  description = "EC2 security group ID allowed to access RDS"
+}
+
 variable "parameter_group_name" {
   type        = string
   description = "Existing DB parameter group name"

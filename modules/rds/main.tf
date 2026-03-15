@@ -53,6 +53,23 @@ resource "aws_security_group" "rds_sg" {
 }
 
 ############################################################
+# ALLOW EC2 → RDS CONNECTION
+############################################################
+
+resource "aws_security_group_rule" "allow_ec2_to_rds" {
+  type                     = "ingress"
+  from_port                = var.db_port
+  to_port                  = var.db_port
+  protocol                 = "tcp"
+
+  # ⭐ RDS SG (this module)
+  security_group_id        = aws_security_group.rds_sg.id
+
+  # ⭐ EC2 SG (from EC2 module output)
+  source_security_group_id = var.ec2_security_group_id
+}
+
+############################################################
 # RDS INSTANCE NODE 1
 ############################################################
 

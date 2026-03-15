@@ -12,6 +12,11 @@ variable "vpc_id" {
   description = "VPC ID for EC2 networking"
 }
 
+variable "rds_security_group_id" {
+  type        = string
+  description = "Security group ID of the RDS instance"
+}
+
 variable "instance_type" {
   type        = string
   default     = "t3.medium"
