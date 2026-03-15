@@ -75,6 +75,22 @@ jobs:
           name: accumulator-jar
           path: .
 
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+          aws-region: us-gov-west-1
+          audience: sts.amazonaws.com
+          output-env-credentials: true
+
+      - name: Retrieve SSH key from Secrets Manager
+        run: |
+          aws secretsmanager get-secret-value \
+            --secret-id arn:aws-us-gov:secretsmanager:us-gov-west-1:018743596699:secret:ansible/keypair-tLYVKr \
+            --query SecretString \
+            --output text > /tmp/ansible-key.pem
+          chmod 600 /tmp/ansible-key.pem
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 

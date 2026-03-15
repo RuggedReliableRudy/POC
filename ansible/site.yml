@@ -1,34 +1,37 @@
 ---
-- name: Configure Accumulator Application and Active-Active PostgreSQL
+- name: Deploy Accumulator Application
   hosts: cpe_app
   become: yes
 
   vars:
-    db_user: "cpe_user"
-    db_name: "{{ lookup('env', 'DB_NAME') }}"
-    db_port: "{{ lookup('env', 'DB_PORT') }}"
-    secret_name: "accumulator"
-
     db_endpoint_1: "{{ lookup('env', 'DB_ENDPOINT_1') }}"
     db_endpoint_2: "{{ lookup('env', 'DB_ENDPOINT_2') }}"
+    db_name: "{{ lookup('env', 'DB_NAME') }}"
+    db_port: "{{ lookup('env', 'DB_PORT') }}"
 
-    jar_name: "AccumulatorLoad-1.0.0.jar"
+  tasks:
+    - name: Ensure deployment directory exists
+      file:
+        path: /opt/accumulator
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+        mode: '0755'
 
-  pre_tasks:
-    - name: Validate required variables
-      fail:
-        msg: >
-          One or more required variables are missing:
-          DB_NAME='{{ db_name }}',
-          DB_PORT='{{ db_port }}',
-          DB_ENDPOINT_1='{{ db_endpoint_1 }}',
-          DB_ENDPOINT_2='{{ db_endpoint_2 }}'
-      when: >
-        db_name is not defined or db_name == '' or
-        db_port is not defined or db_port == '' or
-        db_endpoint_1 is not defined or db_endpoint_1 == '' or
-        db_endpoint_2 is not defined or db_endpoint_2 == ''
+    - name: Copy JAR to server
+      copy:
+        src: accumulator-*.jar
+        dest: /opt/accumulator/accumulator.jar
+        mode: '0755'
 
-  roles:
-    - role: db_active_active
-    - role: java_app
+    - name: Template DB config
+      template:
+        src: templates/db_active.j2
+        dest: /opt/accumulator/db_active.conf
+        mode: '0644'
+
+    - name: Restart accumulator service
+      systemd:
+        name: accumulator
+        state: restarted
+        enabled: yes
