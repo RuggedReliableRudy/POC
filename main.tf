@@ -53,7 +53,7 @@ module "ec2" {
 module "rds" {
   source = "./modules/rds"
 
-  engine_version             = "15.3"
+  engine_version             = "17.6"
   instance_class             = "db.t3.medium"
   db_name                    = var.db_name
   vpc_id                     = local.vpc_id
