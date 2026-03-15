@@ -6,16 +6,31 @@
   vars:
     # DB credentials
     db_user: "cpe_user"
-    db_name: "{{ lookup('env', 'DB_NAME') }}"
-    db_port: "{{ lookup('env', 'DB_PORT') }}"
+    db_name: "{{ lookup('env', 'DB_NAME') | default('', true) }}"
+    db_port: "{{ lookup('env', 'DB_PORT') | default('', true) }}"
     secret_name: "accumulator"
 
     # Terraform outputs passed from GitHub Actions
-    db_node1_endpoint: "{{ lookup('env', 'DB_ENDPOINT_1') }}"
-    db_node2_endpoint: "{{ lookup('env', 'DB_ENDPOINT_2') }}"
+    db_node1_endpoint: "{{ lookup('env', 'DB_ENDPOINT_1') | default('', true) }}"
+    db_node2_endpoint: "{{ lookup('env', 'DB_ENDPOINT_2') | default('', true) }}"
 
     # JAR name from CI pipeline
     jar_name: "AccumulatorLoad-1.0.0.jar"
+
+  pre_tasks:
+    - name: Validate required variables
+      fail:
+        msg: >
+          One or more required variables are missing:
+          DB_NAME='{{ db_name }}',
+          DB_PORT='{{ db_port }}',
+          DB_ENDPOINT_1='{{ db_node1_endpoint }}',
+          DB_ENDPOINT_2='{{ db_node2_endpoint }}'
+      when: >
+        db_name == '' or
+        db_port == '' or
+        db_node1_endpoint == '' or
+        db_node2_endpoint == ''
 
   roles:
     - role: db_active_active
