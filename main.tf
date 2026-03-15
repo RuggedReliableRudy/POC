@@ -69,5 +69,4 @@ module "rds" {
 ############################################################
 # ⭐ NO SECURITY GROUP RULES IN ROOT
 ############################################################
-# The EC2 → RDS rule is created inside the RDS module,
-# because that is where the RDS SG is defined.
+# The EC2 → RDS rule is created inside the RDS module.
