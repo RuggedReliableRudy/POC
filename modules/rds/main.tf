@@ -4,11 +4,7 @@
 
 locals {
   common_tags = var.tags
-}
-
-# Use existing KMS key for both EC2 and RDS
-locals {
-  kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/76639fe4-775e-474c-9fd3-afa872268b5c"
+  kms_key_id  = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/76639fe4-775e-474c-9fd3-afa872268b5c"
 }
 
 ############################################################
@@ -40,8 +36,8 @@ resource "aws_security_group" "rds_sg" {
 
   ingress {
     description = "PostgreSQL access"
-    from_port   = 5430
-    to_port     = 5430
+    from_port   = var.db_port
+    to_port     = var.db_port
     protocol    = "tcp"
     cidr_blocks = ["10.0.0.0/8"]
   }
@@ -71,6 +67,7 @@ resource "aws_db_instance" "node1" {
   username                = local.rds_username
   password                = local.rds_password
 
+  port                    = var.db_port
   db_subnet_group_name    = var.db_subnet_group_name
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
 
@@ -89,7 +86,7 @@ resource "aws_db_instance" "node1" {
 ############################################################
 
 resource "aws_db_instance" "node2" {
-  identifier              = "dev-docmp-accumulator-db12"
+  identifier              = "dev-docmp-accumulator-db2"
   engine                  = "postgres"
   engine_version          = var.engine_version
   instance_class          = var.instance_class
@@ -99,6 +96,7 @@ resource "aws_db_instance" "node2" {
   username                = local.rds_username
   password                = local.rds_password
 
+  port                    = var.db_port
   db_subnet_group_name    = var.db_subnet_group_name
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
 
@@ -109,5 +107,5 @@ resource "aws_db_instance" "node2" {
   publicly_accessible     = false
   deletion_protection     = false
 
-  tags = merge(local.common_tags, { Name = "dev-docmp-accumulator-db12" })
+  tags = merge(local.common_tags, { Name = "dev-docmp-accumulator-db2" })
 }

@@ -5,8 +5,8 @@ on:
     branches: [ "Accumulator-dev" ]
 
 permissions:
-  id-token: write        # REQUIRED for OIDC
-  contents: read         # Required for checkout
+  id-token: write
+  contents: read
 
 jobs:
   terraform:
@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -30,15 +28,12 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        working-directory: .
         run: terraform init
 
       - name: Terraform Apply
-        working-directory: .
         run: terraform apply -auto-approve
 
       - name: Show Terraform outputs (debug)
-        working-directory: .
         run: terraform output
 
   build:
@@ -48,8 +43,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -80,8 +73,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -101,28 +92,37 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init (read state)
-        working-directory: .
         run: terraform init
 
-      - name: Export EC2 instance ID
-        working-directory: .
+      # ============================================================
+      # EXPORT TERRAFORM OUTPUTS FOR ANSIBLE
+      # ============================================================
+      - name: Export Terraform outputs
         run: |
-          set -e
-          ID=$(terraform output -raw ec2_instance_id)
-          echo "Terraform ec2_instance_id = '$ID'"
-          echo "EC2_INSTANCE_ID=$ID" >> $GITHUB_ENV
+          echo "EC2_INSTANCE_ID=$(terraform output -raw ec2_instance_id)" >> $GITHUB_ENV
+          echo "DB_ENDPOINT_1=$(terraform output -raw db_endpoint_1)" >> $GITHUB_ENV
+          echo "DB_ENDPOINT_2=$(terraform output -raw db_endpoint_2)" >> $GITHUB_ENV
+          echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_ENV
+          echo "DB_PORT=$(terraform output -raw db_port)" >> $GITHUB_ENV
 
-      - name: Debug EC2_INSTANCE_ID
-        run: echo "EC2_INSTANCE_ID from env = '$EC2_INSTANCE_ID'"
+      - name: Debug exported values
+        run: |
+          echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID"
+          echo "DB_ENDPOINT_1=$DB_ENDPOINT_1"
+          echo "DB_ENDPOINT_2=$DB_ENDPOINT_2"
+          echo "DB_NAME=$DB_NAME"
+          echo "DB_PORT=$DB_PORT"
 
       - name: Install Ansible + boto3
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible python3-boto3 python3-botocore
 
+      # ============================================================
+      # GENERATE SSM INVENTORY
+      # ============================================================
       - name: Generate SSM inventory
         run: |
-          set -e
           echo "[cpe_app]" > ansible/inventory.ini
           echo "$EC2_INSTANCE_ID" >> ansible/inventory.ini
           echo "" >> ansible/inventory.ini
@@ -131,14 +131,12 @@ jobs:
           echo "ansible_region=us-gov-west-1" >> ansible/inventory.ini
 
       - name: Show generated inventory.ini
-        run: |
-          echo "===== ansible/inventory.ini ====="
-          cat ansible/inventory.ini
-          echo "================================="
-
-      - name: Show Ansible hosts for cpe_app
-        run: |
-          ansible -i ansible/inventory.ini cpe_app --list-hosts || true
+        run: cat ansible/inventory.ini
 
       - name: Run Ansible playbook via SSM
+        env:
+          DB_ENDPOINT_1: ${{ env.DB_ENDPOINT_1 }}
+          DB_ENDPOINT_2: ${{ env.DB_ENDPOINT_2 }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_PORT: ${{ env.DB_PORT }}
         run: ansible-playbook -i ansible/inventory.ini ansible/site.yml

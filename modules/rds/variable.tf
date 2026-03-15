@@ -4,7 +4,7 @@
 
 variable "engine_version" {
   type        = string
-  description = "PostgreSQL engine version for the RDS instances"
+  description = "PostgreSQL engine version for the RDS instances (e.g., 17 or 17.6)"
 }
 
 variable "instance_class" {
@@ -43,6 +43,16 @@ variable "db_credentials_secret_name" {
 variable "kms_key_arn" {
   type        = string
   description = "Existing KMS key ARN for RDS encryption"
+}
+
+############################################################
+# DATABASE PORT
+############################################################
+
+variable "db_port" {
+  type        = number
+  description = "Port for PostgreSQL database"
+  default     = 5430
 }
 
 ############################################################

@@ -23,6 +23,8 @@ locals {
     "sg-046t2639279c75792"
   ]
 
+  kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/76639fe4-775e-474c-9fd3-afa872268b5c"
+
   common_tags = {
     Environment = "Dev"
     Repository  = "Project-Accumulator"
@@ -52,20 +54,17 @@ module "ec2" {
 module "rds" {
   source = "./modules/rds"
 
-  engine                  = "postgres"
-  engine_version          = "17.6"
-  instance_class          = "db.t3.medium"
+  engine_version             = "17.6"
+  instance_class             = "db.t3.medium"
 
-  db_name                 = var.db_name
-  db_port                 = 5430
-  db_user                 = var.db_user
+  db_name                    = var.db_name
+  db_port                    = 5430
   db_credentials_secret_name = var.db_credentials_secret_name
 
-  vpc_id                  = local.vpc_id
-  db_subnet_group_name    = local.db_subnet_group_name
+  vpc_id                     = local.vpc_id
+  db_subnet_group_name       = local.db_subnet_group_name
 
-  deletion_protection     = false
-  skip_final_snapshot     = true
+  kms_key_arn                = local.kms_key_id
 
   tags = local.common_tags
 }
@@ -82,5 +81,3 @@ resource "aws_security_group_rule" "allow_ec2_to_rds" {
   security_group_id        = module.rds.rds_sg_id
   source_security_group_id = local.ec2_security_groups[0]
 }
-
-
