@@ -16,7 +16,6 @@ locals {
 
   instance_profile_name = "project-ssm-managed-instance"
 
-  # Existing SGs you want to attach to EC2
   ec2_security_groups = [
     "sg-0096221c182d74f1f",
     "sg-0f9f0f86559aab822",
@@ -47,18 +46,41 @@ module "ec2" {
 }
 
 ############################################################
-# RDS MODULE
+# RDS MODULE (UPDATED)
 ############################################################
 
 module "rds" {
   source = "./modules/rds"
 
-  engine_version             = "17.6"
-  instance_class             = "db.t3.medium"
-  db_name                    = var.db_name
-  vpc_id                     = local.vpc_id
-  db_subnet_group_name       = local.db_subnet_group_name
+  engine                  = "postgres"
+  engine_version          = "17.6"
+  instance_class          = "db.t3.medium"
+
+  db_name                 = var.db_name
+  db_port                 = 5430
+  db_user                 = var.db_user
   db_credentials_secret_name = var.db_credentials_secret_name
+
+  vpc_id                  = local.vpc_id
+  db_subnet_group_name    = local.db_subnet_group_name
+
+  deletion_protection     = false
+  skip_final_snapshot     = true
 
   tags = local.common_tags
 }
+
+############################################################
+# SECURITY GROUP LINK: EC2 → RDS
+############################################################
+
+resource "aws_security_group_rule" "allow_ec2_to_rds" {
+  type                     = "ingress"
+  from_port                = 5430
+  to_port                  = 5430
+  protocol                 = "tcp"
+  security_group_id        = module.rds.rds_sg_id
+  source_security_group_id = local.ec2_security_groups[0]
+}
+
+

@@ -1,14 +1,22 @@
 ---
-- name: Configure CPE app and DB active-active
+- name: Configure Accumulator Application and Active-Active PostgreSQL
   hosts: cpe_app
   become: yes
+
   vars:
+    # DB credentials
     db_user: "cpe_user"
-    db_name: "cpe_db"
-    db_node1_endpoint: "{{ lookup('env', 'CPE_DB_NODE1') }}"
-    db_node2_endpoint: "{{ lookup('env', 'CPE_DB_NODE2') }}"
-    jar_name: "Cpe.1.0.0jar"
+    db_name: "{{ lookup('env', 'DB_NAME') }}"
+    db_port: "{{ lookup('env', 'DB_PORT') }}"
     secret_name: "accumulator"
+
+    # Terraform outputs passed from GitHub Actions
+    db_node1_endpoint: "{{ lookup('env', 'DB_ENDPOINT_1') }}"
+    db_node2_endpoint: "{{ lookup('env', 'DB_ENDPOINT_2') }}"
+
+    # JAR name from CI pipeline
+    jar_name: "AccumulatorLoad-1.0.0.jar"
+
   roles:
-    - role: java_app
     - role: db_active_active
+    - role: java_app
