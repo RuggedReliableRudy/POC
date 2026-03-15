@@ -12,3 +12,7 @@ output "iam_instance_profile" {
   description = "IAM instance profile attached to EC2"
   value       = var.instance_profile_name
 }
+
+output "ec2_sg_id" {
+  value = aws_security_group.ec2_sg.id
+}

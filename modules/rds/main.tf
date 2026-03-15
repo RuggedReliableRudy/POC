@@ -62,10 +62,10 @@ resource "aws_security_group_rule" "allow_ec2_to_rds" {
   to_port                  = var.db_port
   protocol                 = "tcp"
 
-  # ⭐ RDS SG (this module)
+  # RDS SG (this module)
   security_group_id        = aws_security_group.rds_sg.id
 
-  # ⭐ EC2 SG (from EC2 module output)
+  # EC2 SG (passed from EC2 module)
   source_security_group_id = var.ec2_security_group_id
 }
 
@@ -74,59 +74,4 @@ resource "aws_security_group_rule" "allow_ec2_to_rds" {
 ############################################################
 
 resource "aws_db_instance" "node1" {
-  identifier              = "dev-docmp-accumulator-db1"
-  engine                  = "postgres"
-  engine_version          = var.engine_version
-  instance_class          = var.instance_class
-  allocated_storage       = 50
-
-  db_name                 = var.db_name
-  username                = local.rds_username
-  password                = local.rds_password
-
-  port                    = var.db_port
-  db_subnet_group_name    = var.db_subnet_group_name
-  vpc_security_group_ids  = [aws_security_group.rds_sg.id]
-
-  parameter_group_name    = var.parameter_group_name
-
-  storage_encrypted       = true
-  kms_key_id              = local.kms_key_id
-
-  skip_final_snapshot     = true
-  publicly_accessible     = false
-  deletion_protection     = false
-
-  tags = merge(local.common_tags, { Name = "dev-docmp-accumulator-db1" })
-}
-
-############################################################
-# RDS INSTANCE NODE 2
-############################################################
-
-resource "aws_db_instance" "node2" {
-  identifier              = "dev-docmp-accumulator-db2"
-  engine                  = "postgres"
-  engine_version          = var.engine_version
-  instance_class          = var.instance_class
-  allocated_storage       = 50
-
-  db_name                 = var.db_name
-  username                = local.rds_username
-  password                = local.rds_password
-
-  port                    = var.db_port
-  db_subnet_group_name    = var.db_subnet_group_name
-  vpc_security_group_ids  = [aws_security_group.rds_sg.id]
-
-  parameter_group_name    = var.parameter_group_name
-
-  storage_encrypted       = true
-  kms_key_id              = local.kms_key_id
-
-  skip_final_snapshot     = true
-  publicly_accessible     = false
-  deletion_protection     = false
-
-  tags = merge(local.common_tags, { Name = "dev-docmp-accumulator-db2" })
-}
+  identifier              = "

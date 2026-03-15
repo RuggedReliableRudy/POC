@@ -60,7 +60,7 @@ module "rds" {
 
   parameter_group_name       = "accumulator-postgres17"
 
-  # ⭐ Pass EC2 SG ID to RDS module
+  # ⭐ Pass EC2 SG ID to RDS module so it can create the rule
   ec2_security_group_id      = module.ec2.ec2_sg_id
 
   tags = local.common_tags

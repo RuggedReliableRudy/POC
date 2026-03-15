@@ -46,23 +46,6 @@ resource "aws_security_group" "ec2_sg" {
 }
 
 ############################################################
-# ALLOW EC2 → RDS CONNECTION
-############################################################
-
-resource "aws_security_group_rule" "allow_ec2_to_rds" {
-  type                     = "ingress"
-  from_port                = var.db_port
-  to_port                  = var.db_port
-  protocol                 = "tcp"
-
-  # ⭐ RDS SG comes from the RDS module output
-  security_group_id        = var.rds_security_group_id
-
-  # ⭐ EC2 SG is managed in this module
-  source_security_group_id = aws_security_group.ec2_sg.id
-}
-
-############################################################
 # EC2 INSTANCE
 ############################################################
 
@@ -72,6 +55,7 @@ resource "aws_instance" "cpe_app" {
 
   subnet_id              = var.private_subnet_ids[0]
 
+  # ⭐ Terraform will reuse this SG because it is already in state
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
   iam_instance_profile   = var.instance_profile_name
@@ -85,4 +69,5 @@ resource "aws_instance" "cpe_app" {
 
   tags = merge(local.common_tags, { Name = "docmp-accumulator-dev" })
 }
+
 
