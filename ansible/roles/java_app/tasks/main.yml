@@ -31,8 +31,8 @@
     group: ec2-user
     mode: "0600"
     content: |
-      db.primary.host={{ db_node1_endpoint }}
-      db.secondary.host={{ db_node2_endpoint }}
+      db.primary.host={{ db_endpoint_1 }}
+      db.secondary.host={{ db_endpoint_2 }}
       db.port={{ db_port }}
       db.name={{ db_name }}
       db.user={{ db_user }}

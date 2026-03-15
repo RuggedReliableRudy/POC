@@ -32,7 +32,7 @@
 # ============================================================
 - name: Create database on Node 1
   command: >
-    psql "host={{ db_node1_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_1 }} port=5430 dbname=postgres user=postgres"
     -c "CREATE DATABASE {{ db_name }};"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -40,7 +40,7 @@
 
 - name: Create user on Node 1
   command: >
-    psql "host={{ db_node1_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_1 }} port=5430 dbname=postgres user=postgres"
     -c "CREATE USER {{ db_user }} WITH PASSWORD '{{ db_password }}' LOGIN;"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -48,14 +48,14 @@
 
 - name: Grant replication + superuser on Node 1
   command: >
-    psql "host={{ db_node1_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_1 }} port=5430 dbname=postgres user=postgres"
     -c "GRANT rds_replication, rds_superuser TO {{ db_user }};"
   environment:
     PGPASSWORD: "{{ db_password }}"
 
 - name: Assign ownership on Node 1
   command: >
-    psql "host={{ db_node1_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_1 }} port=5430 dbname=postgres user=postgres"
     -c "ALTER DATABASE {{ db_name }} OWNER TO {{ db_user }};"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -65,7 +65,7 @@
 # ============================================================
 - name: Load schema into Node 1
   command: >
-    psql "host={{ db_node1_endpoint }} port=5430 dbname={{ db_name }} user={{ db_user }}"
+    psql "host={{ db_endpoint_1 }} port=5430 dbname={{ db_name }} user={{ db_user }}"
     -f "{{ playbook_dir }}/../docmp_tables.sql"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -77,7 +77,7 @@
 # ============================================================
 - name: Enable pgactive on Node 1
   command: >
-    psql "host={{ db_node1_endpoint }} port=5430 dbname={{ db_name }} user={{ db_user }}"
+    psql "host={{ db_endpoint_1 }} port=5430 dbname={{ db_name }} user={{ db_user }}"
     -c "CREATE EXTENSION IF NOT EXISTS pgactive;"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -87,7 +87,7 @@
 # ============================================================
 - name: Create database on Node 2
   command: >
-    psql "host={{ db_node2_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_2 }} port=5430 dbname=postgres user=postgres"
     -c "CREATE DATABASE {{ db_name }};"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -95,7 +95,7 @@
 
 - name: Create user on Node 2
   command: >
-    psql "host={{ db_node2_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_2 }} port=5430 dbname=postgres user=postgres"
     -c "CREATE USER {{ db_user }} WITH PASSWORD '{{ db_password }}' LOGIN;"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -103,14 +103,14 @@
 
 - name: Grant replication + superuser on Node 2
   command: >
-    psql "host={{ db_node2_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_2 }} port=5430 dbname=postgres user=postgres"
     -c "GRANT rds_replication, rds_superuser TO {{ db_user }};"
   environment:
     PGPASSWORD: "{{ db_password }}"
 
 - name: Assign ownership on Node 2
   command: >
-    psql "host={{ db_node2_endpoint }} port=5430 dbname=postgres user=postgres"
+    psql "host={{ db_endpoint_2 }} port=5430 dbname=postgres user=postgres"
     -c "ALTER DATABASE {{ db_name }} OWNER TO {{ db_user }};"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -120,7 +120,7 @@
 # ============================================================
 - name: Load schema into Node 2
   command: >
-    psql "host={{ db_node2_endpoint }} port=5430 dbname={{ db_name }} user={{ db_user }}"
+    psql "host={{ db_endpoint_2 }} port=5430 dbname={{ db_name }} user={{ db_user }}"
     -f "{{ playbook_dir }}/../docmp_tables.sql"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -133,7 +133,7 @@
 # ============================================================
 - name: Enable pgactive on Node 2
   command: >
-    psql "host={{ db_node2_endpoint }} port=5430 dbname={{ db_name }} user={{ db_user }}"
+    psql "host={{ db_endpoint_2 }} port=5430 dbname={{ db_name }} user={{ db_user }}"
     -c "CREATE EXTENSION IF NOT EXISTS pgactive;"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -143,10 +143,10 @@
 # ============================================================
 - name: Create pgactive group on Node 1
   command: >
-    psql "host={{ db_node1_endpoint }} port=5430 dbname={{ db_name }} user={{ db_user }}"
+    psql "host={{ db_endpoint_1 }} port=5430 dbname={{ db_name }} user={{ db_user }}"
     -c "SELECT pgactive.pgactive_create_group(
           node_name := '{{ db_name }}-endpoint1-app',
-          node_dsn := 'host={{ db_node1_endpoint }} dbname={{ db_name }} port=5430 user={{ db_user }} password={{ db_password }}'
+          node_dsn := 'host={{ db_endpoint_1 }} dbname={{ db_name }} port=5430 user={{ db_user }} password={{ db_password }}'
         );"
   environment:
     PGPASSWORD: "{{ db_password }}"
@@ -157,11 +157,11 @@
 # ============================================================
 - name: Join pgactive group on Node 2
   command: >
-    psql "host={{ db_node2_endpoint }} port=5430 dbname={{ db_name }} user={{ db_user }}"
+    psql "host={{ db_endpoint_2 }} port=5430 dbname={{ db_name }} user={{ db_user }}"
     -c "SELECT pgactive.pgactive_join_group(
           node_name := '{{ db_name }}-endpoint2-app',
-          node_dsn := 'host={{ db_node2_endpoint }} dbname={{ db_name }} port=5430 user={{ db_user }} password={{ db_password }}',
-          join_using_dsn := 'host={{ db_node1_endpoint }} dbname={{ db_name }} port=5430 user={{ db_user }} password={{ db_password }}'
+          node_dsn := 'host={{ db_endpoint_2 }} dbname={{ db_name }} port=5430 user={{ db_user }} password={{ db_password }}',
+          join_using_dsn := 'host={{ db_endpoint_1 }} dbname={{ db_name }} port=5430 user={{ db_user }} password={{ db_password }}'
         );"
   environment:
     PGPASSWORD: "{{ db_password }}"
