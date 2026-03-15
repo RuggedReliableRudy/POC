@@ -1,3 +1,67 @@
+name: Deploy Accumulator Application
+
+on:
+  push:
+    branches: [ "Accumulator-dev" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+          aws-region: us-gov-west-1
+          audience: sts.amazonaws.com
+          output-env-credentials: true
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+      - name: Show Terraform outputs (debug)
+        run: terraform output
+
+  build:
+    needs: terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Build with Gradle
+        working-directory: CpeLoad
+        run: |
+          chmod +x gradlew
+          ./gradlew clean build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: accumulator-jar
+          path: CpeLoad/build/libs/*.jar
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
