@@ -66,6 +66,8 @@ module "rds" {
 
   kms_key_arn                = local.kms_key_id
 
+   parameter_group_name       = "accumulator-postgres17"
+
   tags = local.common_tags
 }
 

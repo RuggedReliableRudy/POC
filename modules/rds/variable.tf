@@ -27,6 +27,11 @@ variable "db_subnet_group_name" {
   description = "Existing DB subnet group name"
 }
 
+variable "parameter_group_name" {
+  type        = string
+  description = "Existing DB parameter group name"
+}
+
 ############################################################
 # SECRETS MANAGER CREDENTIALS
 ############################################################

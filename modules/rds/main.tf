@@ -71,6 +71,8 @@ resource "aws_db_instance" "node1" {
   db_subnet_group_name    = var.db_subnet_group_name
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
 
+  parameter_group_name    = var.parameter_group_name
+
   storage_encrypted       = true
   kms_key_id              = local.kms_key_id
 
@@ -99,6 +101,8 @@ resource "aws_db_instance" "node2" {
   port                    = var.db_port
   db_subnet_group_name    = var.db_subnet_group_name
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
+
+  parameter_group_name    = var.parameter_group_name
 
   storage_encrypted       = true
   kms_key_id              = local.kms_key_id
