@@ -113,10 +113,12 @@ jobs:
           echo "DB_NAME=$DB_NAME"
           echo "DB_PORT=$DB_PORT"
 
-      - name: Install Ansible + boto3
+      # ============================================================
+      # FIX: Install boto3 inside Ansible’s pipx environment
+      # ============================================================
+      - name: Install boto3 for Ansible
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ansible python3-boto3 python3-botocore
+          pipx inject ansible-core boto3 botocore
 
       # ============================================================
       # GENERATE SSM INVENTORY
