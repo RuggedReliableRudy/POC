@@ -87,9 +87,11 @@ jobs:
         run: |
           aws secretsmanager get-secret-value \
             --secret-id arn:aws-us-gov:secretsmanager:us-gov-west-1:018743596699:secret:ansible/keypair-tLYVKr \
+            --region us-gov-west-1 \
             --query SecretString \
-            --output text > /tmp/ansible-key.pem
+           --output text > /tmp/ansible-key.pem
           chmod 600 /tmp/ansible-key.pem
+
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
