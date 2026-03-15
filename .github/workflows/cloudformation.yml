@@ -94,37 +94,47 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  # Key creation + deletion
                   - kms:CreateKey
                   - kms:ScheduleKeyDeletion
-
-                  # Key policy management
                   - kms:PutKeyPolicy
                   - kms:GetKeyPolicy
-
-                  # Key rotation
                   - kms:EnableKeyRotation
                   - kms:GetKeyRotationStatus
-
-                  # Aliases
                   - kms:CreateAlias
                   - kms:DeleteAlias
                   - kms:ListAliases
-
-                  # Tagging
                   - kms:TagResource
                   - kms:UntagResource
                   - kms:ListResourceTags
-
-                  # Encryption operations
                   - kms:Encrypt
                   - kms:Decrypt
                   - kms:GenerateDataKey
                   - kms:GenerateDataKeyWithoutPlaintext
                   - kms:GenerateDataKeyPair
                   - kms:GenerateDataKeyPairWithoutPlaintext
-
-                  # Describe
                   - kms:DescribeKey
                   - kms:ListKeys
+                Resource: "*"
+
+        # ---------------------------------------------------------
+        # ⭐ NEW: SSM SESSION MANAGER PERMISSIONS FOR GITHUB ACTIONS
+        # ---------------------------------------------------------
+        - PolicyName: github-actions-ssm-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:StartSession
+                  - ssm:DescribeSessions
+                  - ssm:TerminateSession
+                  - ssm:SendCommand
+                  - ssm:GetCommandInvocation
+                  - ssm:DescribeInstanceInformation
+                  - ssmmessages:CreateControlChannel
+                  - ssmmessages:CreateDataChannel
+                  - ssmmessages:OpenControlChannel
+                  - ssmmessages:OpenDataChannel
+                  - ec2messages:GetMessages
+                  - ec2messages:SendReply
                 Resource: "*"
