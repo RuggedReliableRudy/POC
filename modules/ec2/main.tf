@@ -72,7 +72,6 @@ resource "aws_instance" "cpe_app" {
 
   subnet_id              = var.private_subnet_ids[0]
 
-  # ⭐ Terraform will reuse this SG because it is in state
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
   iam_instance_profile   = var.instance_profile_name
@@ -86,3 +85,4 @@ resource "aws_instance" "cpe_app" {
 
   tags = merge(local.common_tags, { Name = "docmp-accumulator-dev" })
 }
+
