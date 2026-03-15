@@ -1,68 +1,3 @@
-name: Deploy Accumulator Application
-
-on:
-  push:
-    branches: [ "Accumulator-dev" ]
-
-permissions:
-  id-token: write
-  contents: read
-
-jobs:
-  terraform:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
-          aws-region: us-gov-west-1
-          audience: sts.amazonaws.com
-          output-env-credentials: true
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-
-
-      - name: Show Terraform outputs (debug)
-        run: terraform output
-
-  build:
-    needs: terraform
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "21"
-
-      - name: Build with Gradle
-        working-directory: CpeLoad
-        run: |
-          chmod +x gradlew
-          ./gradlew clean build
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: accumulator-jar
-          path: CpeLoad/build/libs/*.jar
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -106,6 +41,9 @@ jobs:
           echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_ENV
           echo "DB_PORT=$(terraform output -raw db_port)" >> $GITHUB_ENV
 
+      # ============================================================
+      # DEBUG — SHOW EXACT VALUES PASSED TO ANSIBLE
+      # ============================================================
       - name: Debug exported values
         run: |
           echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID"
@@ -114,16 +52,10 @@ jobs:
           echo "DB_NAME=$DB_NAME"
           echo "DB_PORT=$DB_PORT"
 
-      # ============================================================
-      # FIX: Install boto3 inside Ansible’s pipx environment
-      # ============================================================
       - name: Install boto3 for Ansible
         run: |
           pipx inject ansible-core boto3 botocore
 
-      # ============================================================
-      # GENERATE SSM INVENTORY
-      # ============================================================
       - name: Generate SSM inventory
         run: |
           echo "[cpe_app]" > ansible/inventory.ini
@@ -136,10 +68,13 @@ jobs:
       - name: Show generated inventory.ini
         run: cat ansible/inventory.ini
 
+      # ============================================================
+      # FIXED: PASS SHELL ENV VARS TO ANSIBLE (NOT workflow env)
+      # ============================================================
       - name: Run Ansible playbook via SSM
         env:
-          DB_ENDPOINT_1: ${{ env.DB_ENDPOINT_1 }}
-          DB_ENDPOINT_2: ${{ env.DB_ENDPOINT_2 }}
-          DB_NAME: ${{ env.DB_NAME }}
-          DB_PORT: ${{ env.DB_PORT }}
+          DB_ENDPOINT_1: $DB_ENDPOINT_1
+          DB_ENDPOINT_2: $DB_ENDPOINT_2
+          DB_NAME: $DB_NAME
+          DB_PORT: $DB_PORT
         run: ansible-playbook -i ansible/inventory.ini ansible/site.yml
