@@ -50,7 +50,7 @@ module "rds" {
   instance_class             = "db.t3.medium"
 
   db_name                    = var.db_name
-  db_port                    = 5430
+  db_port                    = var.db_port
   db_credentials_secret_name = var.db_credentials_secret_name
 
   vpc_id                     = local.vpc_id
@@ -60,7 +60,6 @@ module "rds" {
 
   parameter_group_name       = "accumulator-postgres17"
 
-  # ⭐ Pass EC2 SG ID to RDS module so it can create the rule
   ec2_security_group_id      = module.ec2.ec2_sg_id
 
   tags = local.common_tags
