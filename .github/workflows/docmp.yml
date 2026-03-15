@@ -1,15 +1,15 @@
-name: Build and Deploy
+name: Deploy Accumulator Application
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "Accumulator-dev" ]
 
 permissions:
-  id-token: write
-  contents: read
+  id-token: write        # REQUIRED for OIDC
+  contents: read         # Required for checkout
 
 jobs:
-  build:
+  terraform:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,25 +18,56 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+          aws-region: us-gov-west-1
+          audience: sts.amazonaws.com
+          output-env-credentials: true
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: .
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: .
+        run: terraform apply -auto-approve
+
+      - name: Show Terraform outputs (debug)
+        working-directory: .
+        run: terraform output
+
+  build:
+    needs: terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: "temurin"
+          java-version: "21"
 
-      - name: Build JAR
+      - name: Build with Gradle
         working-directory: CpeLoad
-        run: ./gradlew build
-
-      - name: Copy built JAR to root
         run: |
-          cp CpeLoad/build/libs/*.jar ./AccumulatorLoad-1.0.0.jar
+          chmod +x gradlew
+          ./gradlew clean build
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: accumulator-jar
-          path: AccumulatorLoad-1.0.0.jar
+          path: CpeLoad/build/libs/*.jar
 
   deploy:
     needs: build
@@ -61,21 +92,17 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws-us-gov:iam::<ACCOUNT_ID>:role/<ROLE_NAME>
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
           aws-region: us-gov-west-1
+          audience: sts.amazonaws.com
+          output-env-credentials: true
 
-      # TERRAFORM – ROOT DIRECTORY (matches your ls output)
-      - name: Terraform Init
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init (read state)
         working-directory: .
         run: terraform init
-
-      - name: Terraform Apply
-        working-directory: .
-        run: terraform apply -auto-approve
-
-      - name: Show Terraform outputs (debug)
-        working-directory: .
-        run: terraform output
 
       - name: Export EC2 instance ID
         working-directory: .
@@ -93,7 +120,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ansible python3-boto3 python3-botocore
 
-      # INVENTORY – MUST MATCH site.yml hosts: cpe_app
       - name: Generate SSM inventory
         run: |
           set -e
@@ -114,9 +140,5 @@ jobs:
         run: |
           ansible -i ansible/inventory.ini cpe_app --list-hosts || true
 
-      # THIS WILL FAIL IF:
-      # - EC2_INSTANCE_ID is empty
-      # - group name doesn't match
-      # - db_active_active role folder is missing
       - name: Run Ansible playbook via SSM
         run: ansible-playbook -i ansible/inventory.ini ansible/site.yml
