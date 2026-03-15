@@ -1,97 +1,122 @@
-name: Deploy Accumulator App
+name: Build and Deploy
 
 on:
   push:
-    branches: [ "Accumulator-dev" ]
+    branches: [ "main" ]
 
 permissions:
-  id-token: write        # REQUIRED for OIDC
-  contents: read         # Required for checkout
+  id-token: write
+  contents: read
 
 jobs:
-  terraform:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: us-gov-west-1
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-
-      - name: Export Terraform Outputs
-        id: tfout
-        run: |
-          echo "EC2_PRIVATE_IP=$(terraform output -raw private_ip)" >> $GITHUB_ENV
-          echo "DB_ENDPOINT_1=$(terraform output -raw db_endpoint_1)" >> $GITHUB_ENV
-          echo "DB_ENDPOINT_2=$(terraform output -raw db_endpoint_2)" >> $GITHUB_ENV
-
   build:
-    needs: terraform
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
-          java-version: "17"
+          distribution: temurin
+          java-version: 17
 
-      - name: Build with Gradle
+      - name: Build JAR
+        working-directory: CpeLoad
+        run: ./gradlew build
+
+      - name: Copy built JAR to root
         run: |
-          cd CpeLoad
-          ./gradlew clean build
-
+          cp CpeLoad/build/libs/*.jar ./AccumulatorLoad-1.0.0.jar
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: accumulator-jar
-          path: build/libs/AccumulatorLoad-1.0.0.jar
+          path: AccumulatorLoad-1.0.0.jar
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: accumulator-jar
+          path: .
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws-us-gov:iam::<ACCOUNT_ID>:role/<ROLE_NAME>
+          aws-region: us-gov-west-1
 
-      - name: Install Ansible
-        run: sudo apt-get update && sudo apt-get install -y ansible
+      # TERRAFORM – ROOT DIRECTORY (matches your ls output)
+      - name: Terraform Init
+        working-directory: .
+        run: terraform init
 
-      - name: Add EC2 host to inventory
+      - name: Terraform Apply
+        working-directory: .
+        run: terraform apply -auto-approve
+
+      - name: Show Terraform outputs (debug)
+        working-directory: .
+        run: terraform output
+
+      - name: Export EC2 instance ID
+        working-directory: .
         run: |
-          echo "[accumulator]" > inventory
-          echo "${{ env.EC2_PRIVATE_IP }}" >> inventory
+          set -e
+          ID=$(terraform output -raw ec2_instance_id)
+          echo "Terraform ec2_instance_id = '$ID'"
+          echo "EC2_INSTANCE_ID=$ID" >> $GITHUB_ENV
 
-      - name: Copy SSH key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
-          chmod 600 key.pem
+      - name: Debug EC2_INSTANCE_ID
+        run: echo "EC2_INSTANCE_ID from env = '$EC2_INSTANCE_ID'"
 
-      - name: Run Ansible playbook
+      - name: Install Ansible + boto3
         run: |
-          ansible-playbook -i inventory ansible/deploy.yml \
-            --private-key key.pem \
-            --user ec2-user
+          sudo apt-get update
+          sudo apt-get install -y ansible python3-boto3 python3-botocore
+
+      # INVENTORY – MUST MATCH site.yml hosts: cpe_app
+      - name: Generate SSM inventory
+        run: |
+          set -e
+          echo "[cpe_app]" > ansible/inventory.ini
+          echo "$EC2_INSTANCE_ID" >> ansible/inventory.ini
+          echo "" >> ansible/inventory.ini
+          echo "[cpe_app:vars]" >> ansible/inventory.ini
+          echo "ansible_connection=aws_ssm" >> ansible/inventory.ini
+          echo "ansible_region=us-gov-west-1" >> ansible/inventory.ini
+
+      - name: Show generated inventory.ini
+        run: |
+          echo "===== ansible/inventory.ini ====="
+          cat ansible/inventory.ini
+          echo "================================="
+
+      - name: Show Ansible hosts for cpe_app
+        run: |
+          ansible -i ansible/inventory.ini cpe_app --list-hosts || true
+
+      # THIS WILL FAIL IF:
+      # - EC2_INSTANCE_ID is empty
+      # - group name doesn't match
+      # - db_active_active role folder is missing
+      - name: Run Ansible playbook via SSM
+        run: ansible-playbook -i ansible/inventory.ini ansible/site.yml
