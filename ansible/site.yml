@@ -11,8 +11,8 @@
     secret_name: "accumulator"
 
     # Terraform outputs passed from GitHub Actions
-    db_node1_endpoint: "{{ lookup('env', 'DB_ENDPOINT_1') | default('', true) }}"
-    db_node2_endpoint: "{{ lookup('env', 'DB_ENDPOINT_2') | default('', true) }}"
+    db_endpoint_1: "{{ lookup('env', 'DB_ENDPOINT_1') | default('', true) }}"
+    db_endpoint_2: "{{ lookup('env', 'DB_ENDPOINT_2') | default('', true) }}"
 
     # JAR name from CI pipeline
     jar_name: "AccumulatorLoad-1.0.0.jar"
@@ -24,13 +24,13 @@
           One or more required variables are missing:
           DB_NAME='{{ db_name }}',
           DB_PORT='{{ db_port }}',
-          DB_ENDPOINT_1='{{ db_node1_endpoint }}',
-          DB_ENDPOINT_2='{{ db_node2_endpoint }}'
+          DB_ENDPOINT_1='{{ db_endpoint_1 }}',
+          DB_ENDPOINT_2='{{ db_endpoint_2 }}'
       when: >
         db_name == '' or
         db_port == '' or
-        db_node1_endpoint == '' or
-        db_node2_endpoint == ''
+        db_endpoint_1 == '' or
+        db_endpoint_2 == ''
 
   roles:
     - role: db_active_active
