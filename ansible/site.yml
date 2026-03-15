@@ -4,17 +4,14 @@
   become: yes
 
   vars:
-    # DB credentials
     db_user: "cpe_user"
-    db_name: "{{ lookup('env', 'DB_NAME') | default('', true) }}"
-    db_port: "{{ lookup('env', 'DB_PORT') | default('', true) }}"
+    db_name: "{{ lookup('env', 'DB_NAME') }}"
+    db_port: "{{ lookup('env', 'DB_PORT') }}"
     secret_name: "accumulator"
 
-    # Terraform outputs passed from GitHub Actions
-    db_endpoint_1: "{{ lookup('env', 'DB_ENDPOINT_1') | default('', true) }}"
-    db_endpoint_2: "{{ lookup('env', 'DB_ENDPOINT_2') | default('', true) }}"
+    db_endpoint_1: "{{ lookup('env', 'DB_ENDPOINT_1') }}"
+    db_endpoint_2: "{{ lookup('env', 'DB_ENDPOINT_2') }}"
 
-    # JAR name from CI pipeline
     jar_name: "AccumulatorLoad-1.0.0.jar"
 
   pre_tasks:
@@ -27,10 +24,10 @@
           DB_ENDPOINT_1='{{ db_endpoint_1 }}',
           DB_ENDPOINT_2='{{ db_endpoint_2 }}'
       when: >
-        db_name == '' or
-        db_port == '' or
-        db_endpoint_1 == '' or
-        db_endpoint_2 == ''
+        db_name is not defined or db_name == '' or
+        db_port is not defined or db_port == '' or
+        db_endpoint_1 is not defined or db_endpoint_1 == '' or
+        db_endpoint_2 is not defined or db_endpoint_2 == ''
 
   roles:
     - role: db_active_active
