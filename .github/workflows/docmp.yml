@@ -31,10 +31,8 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="db_name=accumulator" \
-            -var="db_port=5430"
+        run: terraform apply -auto-approve
+
 
       - name: Show Terraform outputs (debug)
         run: terraform output
