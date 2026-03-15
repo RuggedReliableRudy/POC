@@ -1,9 +1,10 @@
 terraform {
   backend "s3" {
-    bucket         = "your-tf-state-bucket"
-    key            = "accumulator/terraform.tfstate"
+    bucket         = "accumulator-tf-state"
+    key            = "terraform/accumulator.tfstate"
     region         = "us-gov-west-1"
-    dynamodb_table = "your-tf-lock-table"
+    dynamodb_table = "accumulator-tf-locks"
     encrypt        = true
   }
 }
+
