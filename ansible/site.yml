@@ -4,6 +4,9 @@
   become: yes
 
   vars:
+    ansible_connection: amazon.aws.ssm
+    ansible_python_interpreter: /usr/bin/python3
+
     db_endpoint_1: "{{ lookup('env', 'DB_ENDPOINT_1') }}"
     db_endpoint_2: "{{ lookup('env', 'DB_ENDPOINT_2') }}"
     db_name: "{{ lookup('env', 'DB_NAME') }}"
