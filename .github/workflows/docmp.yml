@@ -85,7 +85,7 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      - name: Install Ansible + AWS SSM dependencies (clean isolated install)
+      - name: Install Ansible + AWS SSM dependencies
         run: |
           sudo apt-get update
           sudo apt-get remove -y ansible || true
@@ -95,23 +95,13 @@ jobs:
 
           pip3 install "ansible>=2.15" boto3 botocore
 
-          # Force GitHub runner to use pip-installed Ansible
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
           ansible-galaxy collection install amazon.aws
           ansible-galaxy collection install community.aws
 
-          # Debug info
           which ansible
           ansible --version
-          ansible-galaxy collection list
-          ansible-config dump | grep -i plugin
-
-      
-      - name: Test SSM connectivity
-        run: |
-          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
-          ansible -i "${EC2_INSTANCE_ID}," all -m ping -e "ansible_connection=aws_ssm"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -145,6 +135,13 @@ jobs:
         run: |
           export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
 
+          # Install Python on EC2 before fact gathering
+          ansible -i "${EC2_INSTANCE_ID}," all \
+            -e "ansible_connection=aws_ssm" \
+            -m raw \
+            -a "sudo yum install -y python3 || sudo dnf install -y python3 || sudo apt-get install -y python3"
+
+          # Now run the real playbook
           ansible-playbook \
             -i "${EC2_INSTANCE_ID}," \
             ansible/site.yml
