@@ -1,7 +1,12 @@
 ---
 - name: Deploy Accumulator Application
-  hosts: cpe_app
+  hosts: all
   become: yes
+
+  vars:
+    ansible_connection: amazon.aws.ssm
+    ansible_python_interpreter: /usr/bin/python3
+
 
   vars:
     ansible_connection: amazon.aws.ssm
