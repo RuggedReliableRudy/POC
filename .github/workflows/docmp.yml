@@ -122,5 +122,4 @@ jobs:
         run: |
           ansible-playbook \
             -i "${EC2_INSTANCE_ID}," \
-            -e "ansible_connection=amazon.aws.ssm" \
             ansible/site.yml
