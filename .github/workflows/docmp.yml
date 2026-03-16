@@ -85,15 +85,38 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      - name: Install Ansible + AWS SSM dependencies
+      - name: Install Ansible + AWS SSM dependencies (full clean install)
         run: |
+          # Remove any old Ansible versions that conflict
           sudo apt-get update
-          sudo apt-get install -y python3-pip
-          pip3 install --upgrade pip
-          pip3 install ansible boto3 botocore
+          sudo apt-get remove -y ansible || true
+
+          # Install Python + pip cleanly
+          sudo apt-get install -y python3 python3-pip python3-venv
+
+          # Upgrade pip to avoid dependency issues
+          pip3 install --upgrade pip setuptools wheel
+
+          # Install modern Ansible (required for SSM plugin)
+          pip3 install "ansible>=2.15"
+
+          # Install AWS Python SDKs
+          pip3 install boto3 botocore
+
+          # Install AWS Ansible collection (contains SSM plugin)
           ansible-galaxy collection install amazon.aws
 
+          # Install community AWS collection (extra modules)
+          ansible-galaxy collection install community.aws
 
+          # Show Ansible version (must be 2.12+)
+          ansible --version
+
+          # Show installed collections
+          ansible-galaxy collection list
+
+          # Show plugin paths so we know SSM plugin is visible
+          ansible-config dump | grep -i plugin
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
