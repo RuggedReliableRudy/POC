@@ -1,4 +1,4 @@
-name: Deploy Accumulator Application
+name: Deploy Accumulator Application (SSM)
 
 on:
   push:
@@ -85,24 +85,6 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      - name: Install Ansible + AWS SSM dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get remove -y ansible || true
-
-          sudo apt-get install -y python3 python3-pip python3-venv
-          pip3 install --upgrade pip setuptools wheel
-
-          pip3 install "ansible>=2.15" boto3 botocore
-
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-          ansible-galaxy collection install amazon.aws
-          ansible-galaxy collection install community.aws
-
-          which ansible
-          ansible --version
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -116,51 +98,23 @@ jobs:
           echo "DB_ENDPOINT_2=$(terraform output -raw db_endpoint_2)" >> $GITHUB_ENV
           echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_ENV
           echo "DB_PORT=$(terraform output -raw db_port)" >> $GITHUB_ENV
+          echo "DB_USER=$(terraform output -raw db_user)" >> $GITHUB_ENV
+          echo "DB_SECRET_NAME=$(terraform output -raw db_secret_name)" >> $GITHUB_ENV
+          echo "S3_BUCKET=$(terraform output -raw deploy_bucket)" >> $GITHUB_ENV
 
-      - name: Debug exported values
+      - name: Make deploy script executable
+        run: chmod +x deploy_ssm.sh
+
+      - name: Deploy via SSM Run Command
         run: |
-          echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID"
-          echo "DB_ENDPOINT_1=$DB_ENDPOINT_1"
-          echo "DB_ENDPOINT_2=$DB_ENDPOINT_2"
-          echo "DB_NAME=$DB_NAME"
-          echo "DB_PORT=$DB_PORT"
-
-      # 🔥 TEST SSM CONNECTION BEFORE RUNNING PLAYBOOK
-      - name: Test SSM connection to EC2
-        env:
-          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
-        run: |
-          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
-
-          echo "Testing SSM connectivity to $EC2_INSTANCE_ID"
-
-          ansible -i "${EC2_INSTANCE_ID}," all \
-            -e "ansible_connection=aws_ssm" \
-            -m ping -vvv
-
-      # 🔥 INSTALL PYTHON ON EC2 BEFORE FACT GATHERING
-      - name: Install Python on EC2 (required for Ansible facts)
-        env:
-          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
-        run: |
-          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
-
-          ansible -i "${EC2_INSTANCE_ID}," all \
-            -e "ansible_connection=aws_ssm" \
-            -m raw \
-            -a "sudo yum install -y python3 || sudo dnf install -y python3 || sudo apt-get install -y python3"
-
-      # 🔥 RUN THE REAL PLAYBOOK
-      - name: Run Ansible via SSM
-        env:
-          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
-          DB_ENDPOINT_1: ${{ env.DB_ENDPOINT_1 }}
-          DB_ENDPOINT_2: ${{ env.DB_ENDPOINT_2 }}
-          DB_NAME: ${{ env.DB_NAME }}
-          DB_PORT: ${{ env.DB_PORT }}
-        run: |
-          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
-
-          ansible-playbook \
-            -i "${EC2_INSTANCE_ID}," \
-            ansible/site.yml
+          JAR_FILE=$(ls accumulator-*.jar || ls *.jar)
+          ./deploy_ssm.sh \
+            "$EC2_INSTANCE_ID" \
+            "$S3_BUCKET" \
+            "$JAR_FILE" \
+            "$DB_ENDPOINT_1" \
+            "$DB_ENDPOINT_2" \
+            "$DB_NAME" \
+            "$DB_PORT" \
+            "$DB_USER" \
+            "$DB_SECRET_NAME"
