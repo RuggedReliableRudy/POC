@@ -12,16 +12,17 @@ DB_USER="$8"
 SECRET_NAME="$9"
 
 echo "=== Uploading JAR to S3 bucket: project-accumulator-glue-job/ ==="
-aws s3 cp AccumulatorLoad-1.0.0.jar "s3://project-accumulator-glue-job//accumulator.jar"
+aws s3 cp AccumulatorLoad-1.0.0.jar "s3://project-accumulator-glue-job/accumulator.jar"
 
 if [ -f "docmp_tables.sql" ]; then
   echo "=== Uploading schema file to S3 ==="
-  aws s3 cp "docmp_tables.sql" "s3://project-accumulator-glue-job//docmp_tables.sql"
+  aws s3 cp "docmp_tables.sql" "s3://project-accumulator-glue-job/docmp_tables.sql"
 fi
 
 echo "=== Building SSM command payload ==="
 
-read -r -d '' COMMANDS <<EOF
+# IMPORTANT: literal heredoc prevents premature variable expansion
+read -r -d '' COMMANDS <<'EOF'
 set -e
 
 echo "=== Installing required tools ==="
@@ -34,7 +35,7 @@ sudo chown ec2-user:ec2-user /opt/cpe-app
 sudo chmod 755 /opt/cpe-app
 
 echo "=== Downloading JAR from S3 ==="
-sudo aws s3 cp s3://project-accumulator-glue-job//accumulator.jar /opt/accumulator/accumulator.jar
+sudo aws s3 cp s3://project-accumulator-glue-job/accumulator.jar /opt/accumulator/accumulator.jar
 sudo chmod 755 /opt/accumulator/accumulator.jar
 
 echo "=== Copying JAR into application directory ==="
@@ -51,14 +52,14 @@ db_port=$DB_PORT
 CONFIG'
 
 echo "=== Retrieving DB password from Secrets Manager ==="
-SECRET_JSON=\$(aws secretsmanager get-secret-value \
+SECRET_JSON=$(aws secretsmanager get-secret-value \
   --region us-gov-west-1 \
   --secret-id "accumulator" \
   --query SecretString \
   --output text)
 
-DB_PASSWORD=\$(echo "\$SECRET_JSON" | jq -r '.password')
-export PGPASSWORD="\$DB_PASSWORD"
+DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.password')
+export PGPASSWORD="$DB_PASSWORD"
 
 echo "=== Writing application DB properties ==="
 sudo bash -c "cat > /opt/cpe-app/db.properties <<PROPS
@@ -67,7 +68,7 @@ db.secondary.host=$DB_ENDPOINT_2
 db.port=$DB_PORT
 db.name=$DB_NAME
 db.user=$DB_USER
-db.password=\$DB_PASSWORD
+db.password=$DB_PASSWORD
 PROPS"
 sudo chmod 600 /opt/cpe-app/db.properties
 sudo chown ec2-user:ec2-user /opt/cpe-app/db.properties
@@ -96,16 +97,16 @@ sudo systemctl daemon-reload
 sudo systemctl enable cpe-app
 sudo systemctl restart cpe-app
 
-if aws s3 ls "s3://project-accumulator-glue-job//docmp_tables.sql" >/dev/null 2>&1; then
+if aws s3 ls "s3://project-accumulator-glue-job/docmp_tables.sql" >/dev/null 2>&1; then
   echo "=== Downloading schema file for pgactive setup ==="
-  sudo aws s3 cp s3://project-accumulator-glue-job//docmp_tables.sql /opt/accumulator/docmp_tables.sql
+  sudo aws s3 cp s3://project-accumulator-glue-job/docmp_tables.sql /opt/accumulator/docmp_tables.sql
 
   echo "=== Creating DB + user and loading schema on Node 1 ==="
   psql "host=$DB_ENDPOINT_1 port=5430 dbname=postgres user=postgres" \
     -c "CREATE DATABASE $DB_NAME;" || true
 
   psql "host=$DB_ENDPOINT_1 port=5430 dbname=postgres user=postgres" \
-    -c "CREATE USER $DB_USER WITH PASSWORD '\$DB_PASSWORD' LOGIN;" || true
+    -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD' LOGIN;" || true
 
   psql "host=$DB_ENDPOINT_1 port=5430 dbname=postgres user=postgres" \
     -c "GRANT rds_replication, rds_superuser TO $DB_USER;"
@@ -125,7 +126,7 @@ if aws s3 ls "s3://project-accumulator-glue-job//docmp_tables.sql" >/dev/null 2>
     -c "CREATE DATABASE $DB_NAME;" || true
 
   psql "host=$DB_ENDPOINT_2 port=5430 dbname=postgres user=postgres" \
-    -c "CREATE USER $DB_USER WITH PASSWORD '\$DB_PASSWORD' LOGIN;" || true
+    -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD' LOGIN;" || true
 
   psql "host=$DB_ENDPOINT_2 port=5430 dbname=postgres user=postgres" \
     -c "GRANT rds_replication, rds_superuser TO $DB_USER;"
@@ -144,15 +145,15 @@ if aws s3 ls "s3://project-accumulator-glue-job//docmp_tables.sql" >/dev/null 2>
   psql "host=$DB_ENDPOINT_1 port=5430 dbname=$DB_NAME user=$DB_USER" \
     -c "SELECT pgactive.pgactive_create_group(
           node_name := '${DB_NAME}-endpoint1-app',
-          node_dsn := 'host=$DB_ENDPOINT_1 dbname=$DB_NAME port=5430 user=$DB_USER password=\$DB_PASSWORD'
+          node_dsn := 'host=$DB_ENDPOINT_1 dbname=$DB_NAME port=5430 user=$DB_USER password=$DB_PASSWORD'
         );" || true
 
   echo "=== Joining Node 2 to pgactive group ==="
   psql "host=$DB_ENDPOINT_2 port=5430 dbname=$DB_NAME user=$DB_USER" \
     -c "SELECT pgactive.pgactive_join_group(
           node_name := '${DB_NAME}-endpoint2-app',
-          node_dsn := 'host=$DB_ENDPOINT_2 dbname=$DB_NAME port=5430 user=$DB_USER password=\$DB_PASSWORD',
-          join_using_dsn := 'host=$DB_ENDPOINT_1 dbname=$DB_NAME port=5430 user=$DB_USER password=\$DB_PASSWORD'
+          node_dsn := 'host=$DB_ENDPOINT_2 dbname=$DB_NAME port=5430 user=$DB_USER password=$DB_PASSWORD',
+          join_using_dsn := 'host=$DB_ENDPOINT_1 dbname=$DB_NAME port=5430 user=$DB_USER password=$DB_PASSWORD'
         );" || true
 fi
 
