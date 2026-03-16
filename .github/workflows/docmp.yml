@@ -107,6 +107,12 @@ jobs:
           ansible-galaxy collection list
           ansible-config dump | grep -i plugin
 
+      
+      - name: Test SSM connectivity
+        run: |
+          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
+          ansible -i "${EC2_INSTANCE_ID}," all -m ping -e "ansible_connection=aws_ssm"
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 

@@ -3,8 +3,11 @@
   hosts: all
   become: yes
 
+  collections:
+    - amazon.aws
+
   vars:
-    ansible_connection: amazon.aws.ssm
+    ansible_connection: aws_ssm
     ansible_python_interpreter: /usr/bin/python3
 
 
