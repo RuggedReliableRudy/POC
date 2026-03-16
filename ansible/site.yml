@@ -2,6 +2,7 @@
 - name: Deploy Accumulator Application
   hosts: all
   become: yes
+  gather_facts: false
 
   collections:
     - amazon.aws
@@ -15,29 +16,14 @@
     db_name: "{{ lookup('env', 'DB_NAME') }}"
     db_port: "{{ lookup('env', 'DB_PORT') }}"
 
-  tasks:
-    - name: Ensure deployment directory exists
-      file:
-        path: /opt/accumulator
-        state: directory
-        owner: ec2-user
-        group: ec2-user
-        mode: '0755'
+  pre_tasks:
+    - name: Ensure Python is installed
+      raw: |
+        if command -v python3 >/dev/null 2>&1; then
+          echo "Python3 already installed"
+        else
+          sudo yum install -y python3 || sudo dnf install -y python3 || sudo apt-get install -y python3
+        fi
 
-    - name: Copy JAR to server
-      copy:
-        src: accumulator-*.jar
-        dest: /opt/accumulator/accumulator.jar
-        mode: '0755'
-
-    - name: Template DB config
-      template:
-        src: templates/db_active.j2
-        dest: /opt/accumulator/db_active.conf
-        mode: '0644'
-
-    - name: Restart accumulator service
-      systemd:
-        name: accumulator
-        state: restarted
-        enabled: yes
+    - name: Gather facts
+      setup:
