@@ -140,6 +140,12 @@ jobs:
           echo "DB_NAME=$DB_NAME"
           echo "DB_PORT=$DB_PORT"
 
+      
+      - name: Force Ansible to load AWS collections
+        run: |
+          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
+          echo "ANSIBLE_COLLECTIONS_PATHS=$ANSIBLE_COLLECTIONS_PATHS"
+
       - name: Run Ansible via SSM
         env:
           EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
@@ -148,6 +154,8 @@ jobs:
           DB_NAME: ${{ env.DB_NAME }}
           DB_PORT: ${{ env.DB_PORT }}
         run: |
+          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
           ansible-playbook \
             -i "${EC2_INSTANCE_ID}," \
             ansible/site.yml
+
