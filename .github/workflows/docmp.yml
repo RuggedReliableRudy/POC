@@ -35,6 +35,7 @@ jobs:
       - name: Show Terraform outputs
         run: terraform output
 
+
   build:
     needs: terraform
     runs-on: ubuntu-latest
@@ -61,9 +62,10 @@ jobs:
           name: accumulator-jar
           path: CpeLoad/build/libs/*.jar
 
+
   deploy:
     needs: build
-    runs-on: [self-hosted, accumulator]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -83,15 +85,10 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      - name: Retrieve SSH key from Secrets Manager
+      - name: Install Ansible + SSM plugin
         run: |
-          aws secretsmanager get-secret-value \
-            --secret-id arn:aws-us-gov:secretsmanager:us-gov-west-1:018743596699:secret:ansible/keypair-tLYVKr \
-            --region us-gov-west-1 \
-            --query SecretString \
-           --output text > /tmp/ansible-key.pem
-          chmod 600 /tmp/ansible-key.pem
-
+          sudo apt-get update
+          sudo apt-get install -y ansible python3-boto3 python3-botocore
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -101,6 +98,7 @@ jobs:
 
       - name: Export Terraform outputs
         run: |
+          echo "EC2_INSTANCE_ID=$(terraform output -raw ec2_instance_id)" >> $GITHUB_ENV
           echo "DB_ENDPOINT_1=$(terraform output -raw db_endpoint_1)" >> $GITHUB_ENV
           echo "DB_ENDPOINT_2=$(terraform output -raw db_endpoint_2)" >> $GITHUB_ENV
           echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_ENV
@@ -108,16 +106,21 @@ jobs:
 
       - name: Debug exported values
         run: |
+          echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID"
           echo "DB_ENDPOINT_1=$DB_ENDPOINT_1"
           echo "DB_ENDPOINT_2=$DB_ENDPOINT_2"
           echo "DB_NAME=$DB_NAME"
           echo "DB_PORT=$DB_PORT"
 
-      - name: Run Ansible locally
+      - name: Run Ansible via SSM
         env:
-          DB_ENDPOINT_1: $DB_ENDPOINT_1
-          DB_ENDPOINT_2: $DB_ENDPOINT_2
-          DB_NAME: $DB_NAME
-          DB_PORT: $DB_PORT
+          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
+          DB_ENDPOINT_1: ${{ env.DB_ENDPOINT_1 }}
+          DB_ENDPOINT_2: ${{ env.DB_ENDPOINT_2 }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_PORT: ${{ env.DB_PORT }}
         run: |
-          ansible-playbook -i ansible/inventory.ini ansible/site.yml
+          ansible-playbook \
+            -i "${EC2_INSTANCE_ID}," \
+            -e "ansible_connection=amazon.aws.ssm" \
+            ansible/site.yml
