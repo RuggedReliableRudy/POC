@@ -99,8 +99,6 @@ jobs:
           echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_ENV
           echo "DB_PORT=$(terraform output -raw db_port)" >> $GITHUB_ENV
           echo "DB_USER=$(terraform output -raw db_user)" >> $GITHUB_ENV
-          echo "DB_SECRET_NAME=$(terraform output -raw db_secret_name)" >> $GITHUB_ENV
-          echo "S3_BUCKET=$(terraform output -raw deploy_bucket)" >> $GITHUB_ENV
 
       - name: Make deploy script executable
         run: chmod +x deploy_ssm.sh
@@ -110,11 +108,11 @@ jobs:
           JAR_FILE=$(ls accumulator-*.jar || ls *.jar)
           ./deploy_ssm.sh \
             "$EC2_INSTANCE_ID" \
-            "$S3_BUCKET" \
+            "project-accumulator-glue-job" \
             "$JAR_FILE" \
             "$DB_ENDPOINT_1" \
             "$DB_ENDPOINT_2" \
             "$DB_NAME" \
             "$DB_PORT" \
             "$DB_USER" \
-            "$DB_SECRET_NAME"
+            "accumulator"
