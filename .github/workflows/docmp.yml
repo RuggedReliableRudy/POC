@@ -56,11 +56,15 @@ jobs:
           chmod +x gradlew
           ./gradlew clean build
 
+      - name: Rename JAR for deployment
+        run: |
+          mv CpeLoad/build/libs/*.jar AccumulatorLoad-1.0.0.jar
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: accumulator-jar
-          path: CpeLoad/build/libs/*.jar
+          path: AccumulatorLoad-1.0.0.jar
 
 
   deploy:
@@ -98,18 +102,17 @@ jobs:
           echo "DB_ENDPOINT_2=$(terraform output -raw db_endpoint_2)" >> $GITHUB_ENV
           echo "DB_NAME=$(terraform output -raw db_name)" >> $GITHUB_ENV
           echo "DB_PORT=$(terraform output -raw db_port)" >> $GITHUB_ENV
-          echo "DB_USER=$(terraform output -raw db_user)" >> $GITHUB_ENV
+          echo "DB_USER=accumulator" >> $GITHUB_ENV
 
       - name: Make deploy script executable
         run: chmod +x deploy_ssm.sh
 
       - name: Deploy via SSM Run Command
         run: |
-          JAR_FILE=$(ls accumulator-*.jar || ls *.jar)
           ./deploy_ssm.sh \
             "$EC2_INSTANCE_ID" \
             "project-accumulator-glue-job" \
-            "$JAR_FILE" \
+            "AccumulatorLoad-1.0.0.jar" \
             "$DB_ENDPOINT_1" \
             "$DB_ENDPOINT_2" \
             "$DB_NAME" \

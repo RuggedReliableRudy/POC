@@ -12,7 +12,7 @@ DB_USER="$8"
 SECRET_NAME="$9"
 
 echo "=== Uploading JAR to S3 bucket: project-accumulator-glue-job/ ==="
-aws s3 cp "$JAR_PATH" "s3://project-accumulator-glue-job//accumulator.jar"
+aws s3 cp AccumulatorLoad-1.0.0.jar "s3://project-accumulator-glue-job//accumulator.jar"
 
 if [ -f "docmp_tables.sql" ]; then
   echo "=== Uploading schema file to S3 ==="
