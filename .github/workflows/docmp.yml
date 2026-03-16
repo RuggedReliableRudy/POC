@@ -125,6 +125,32 @@ jobs:
           echo "DB_NAME=$DB_NAME"
           echo "DB_PORT=$DB_PORT"
 
+      # 🔥 TEST SSM CONNECTION BEFORE RUNNING PLAYBOOK
+      - name: Test SSM connection to EC2
+        env:
+          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
+        run: |
+          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
+
+          echo "Testing SSM connectivity to $EC2_INSTANCE_ID"
+
+          ansible -i "${EC2_INSTANCE_ID}," all \
+            -e "ansible_connection=aws_ssm" \
+            -m ping -vvv
+
+      # 🔥 INSTALL PYTHON ON EC2 BEFORE FACT GATHERING
+      - name: Install Python on EC2 (required for Ansible facts)
+        env:
+          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
+        run: |
+          export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
+
+          ansible -i "${EC2_INSTANCE_ID}," all \
+            -e "ansible_connection=aws_ssm" \
+            -m raw \
+            -a "sudo yum install -y python3 || sudo dnf install -y python3 || sudo apt-get install -y python3"
+
+      # 🔥 RUN THE REAL PLAYBOOK
       - name: Run Ansible via SSM
         env:
           EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
@@ -135,13 +161,6 @@ jobs:
         run: |
           export ANSIBLE_COLLECTIONS_PATHS=~/.ansible/collections:/usr/share/ansible/collections
 
-          # Install Python on EC2 before fact gathering
-          ansible -i "${EC2_INSTANCE_ID}," all \
-            -e "ansible_connection=aws_ssm" \
-            -m raw \
-            -a "sudo yum install -y python3 || sudo dnf install -y python3 || sudo apt-get install -y python3"
-
-          # Now run the real playbook
           ansible-playbook \
             -i "${EC2_INSTANCE_ID}," \
             ansible/site.yml
