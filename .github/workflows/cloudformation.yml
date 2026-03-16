@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: GitHub Actions IAM Role for Terraform provisioning
+Description: GitHub Actions IAM Role for Terraform provisioning + SSM deployments
 
 Resources:
 
@@ -26,7 +26,7 @@ Resources:
       Policies:
 
         # ---------------------------------------------------------
-        # S3 Backend Access
+        # S3 Backend Access (Terraform state bucket)
         # ---------------------------------------------------------
         - PolicyName: github-actions-terraform-s3-backend
           PolicyDocument:
@@ -44,6 +44,25 @@ Resources:
                   - s3:PutObject
                   - s3:DeleteObject
                 Resource: arn:aws-us-gov:s3:::project-accumulator-statefile/*
+
+        # ---------------------------------------------------------
+        # ⭐ NEW: Deployment Bucket Access (upload JAR + SQL)
+        # ---------------------------------------------------------
+        - PolicyName: github-actions-deploy-bucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: arn:aws-us-gov:s3:::project-accumulator-glue-job
+
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: arn:aws-us-gov:s3:::project-accumulator-glue-job/*
 
         # ---------------------------------------------------------
         # Terraform Provisioning Permissions
@@ -117,7 +136,7 @@ Resources:
                 Resource: "*"
 
         # ---------------------------------------------------------
-        # ⭐ NEW: SSM SESSION MANAGER PERMISSIONS FOR GITHUB ACTIONS
+        # ⭐ SSM Run Command Permissions (required for deploy_ssm.sh)
         # ---------------------------------------------------------
         - PolicyName: github-actions-ssm-access
           PolicyDocument:
@@ -125,12 +144,15 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - ssm:StartSession
-                  - ssm:DescribeSessions
-                  - ssm:TerminateSession
                   - ssm:SendCommand
                   - ssm:GetCommandInvocation
+                  - ssm:ListCommands
+                  - ssm:ListCommandInvocations
                   - ssm:DescribeInstanceInformation
+                  - ssm:DescribeInstanceProperties
+                  - ssm:DescribeDocument
+                  - ssm:ListDocuments
+                  - ssm:ListDocumentVersions
                   - ssmmessages:CreateControlChannel
                   - ssmmessages:CreateDataChannel
                   - ssmmessages:OpenControlChannel
