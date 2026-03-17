@@ -8,8 +8,16 @@ SECRET_NAME="qa/docmp/db"
 AWS_REGION="us-gov-west-1"
 DB_PORT=5430
 
-echo "=== Installing required tools (PostgreSQL 17, jq, AWS CLI) ==="
-sudo yum install -y postgresql17 jq awscli
+echo "=== Installing required tools (PostgreSQL client, jq, AWS CLI v2) ==="
+
+# Install PostgreSQL client (psql)
+sudo yum install -y postgresql jq unzip
+
+# Install AWS CLI v2
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
 
 # ============================================================
 # RETRIEVE CREDS + ENDPOINTS FROM SECRETS MANAGER
