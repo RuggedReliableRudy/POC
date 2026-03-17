@@ -1,5 +1,0 @@
-- name: Create S3 bucket
-  amazon.aws.s3_bucket:
-    name: "{{ s3_bucket }}"
-    region: "{{ region }}"
-    state: present
