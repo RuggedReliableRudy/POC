@@ -24,7 +24,7 @@ locals {
 # IMPORT DB USER + PASSWORD FROM EXISTING SECRET
 # ============================================================
 data "aws_secretsmanager_secret_version" "db_creds" {
-  secret_id = "qa/docmp/db"
+  secret_id = "qa/dcocmp/db"
 }
 
 locals {
@@ -81,7 +81,7 @@ resource "aws_db_instance" "node1" {
   skip_final_snapshot     = true
 
   tags = merge(local.common_tags, {
-    Name = "docmp-vfmp-qa-db-node1"
+    Name = "docmp-vfmp-qa-db1"
   })
 }
 
@@ -110,7 +110,7 @@ resource "aws_db_instance" "node2" {
   skip_final_snapshot     = true
 
   tags = merge(local.common_tags, {
-    Name = "docmp-vfmp-qa-db-node2"
+    Name = "docmp-vfmp-qa-db2"
   })
 }
 
