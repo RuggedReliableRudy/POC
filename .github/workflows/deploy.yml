@@ -8,10 +8,11 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  TF_WORKING_DIR: ./terraform
+
 jobs:
   terraform:
-    # If you want to run on your self-hosted runner:
-    # runs-on: [self-hosted, docmp-accumulator]
     runs-on: ubuntu-latest
 
     steps:
@@ -42,28 +43,28 @@ jobs:
       # Terraform Init
       # -------------------------------------------------------
       - name: Terraform Init
-        run: terraform init
+        run: terraform -chdir=${{ env.TF_WORKING_DIR }} init
 
       # -------------------------------------------------------
       # Terraform Validate
       # -------------------------------------------------------
       - name: Terraform Validate
-        run: terraform validate
+        run: terraform -chdir=${{ env.TF_WORKING_DIR }} validate
 
       # -------------------------------------------------------
       # Terraform Plan
       # -------------------------------------------------------
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform -chdir=${{ env.TF_WORKING_DIR }} plan -out=tfplan
 
       # -------------------------------------------------------
       # Terraform Apply
       # -------------------------------------------------------
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform -chdir=${{ env.TF_WORKING_DIR }} apply -auto-approve tfplan
 
       # -------------------------------------------------------
       # Output DB Endpoints (for logs)
       # -------------------------------------------------------
       - name: Show Terraform Outputs
-        run: terraform output
+        run: terraform -chdir=${{ env.TF_WORKING_DIR }} output
