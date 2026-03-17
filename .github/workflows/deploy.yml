@@ -16,15 +16,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # -------------------------------------------------------
-      # Checkout repository
-      # -------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -------------------------------------------------------
-      # Configure AWS Credentials (OIDC → GovCloud)
-      # -------------------------------------------------------
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -33,38 +27,20 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      # -------------------------------------------------------
-      # Install Terraform
-      # -------------------------------------------------------
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # -------------------------------------------------------
-      # Terraform Init
-      # -------------------------------------------------------
       - name: Terraform Init
         run: terraform -chdir=${{ env.TF_WORKING_DIR }} init
 
-      # -------------------------------------------------------
-      # Terraform Validate
-      # -------------------------------------------------------
       - name: Terraform Validate
         run: terraform -chdir=${{ env.TF_WORKING_DIR }} validate
 
-      # -------------------------------------------------------
-      # Terraform Plan
-      # -------------------------------------------------------
       - name: Terraform Plan
         run: terraform -chdir=${{ env.TF_WORKING_DIR }} plan -out=tfplan
 
-      # -------------------------------------------------------
-      # Terraform Apply
-      # -------------------------------------------------------
       - name: Terraform Apply
         run: terraform -chdir=${{ env.TF_WORKING_DIR }} apply -auto-approve tfplan
 
-      # -------------------------------------------------------
-      # Output DB Endpoints (for logs)
-      # -------------------------------------------------------
       - name: Show Terraform Outputs
         run: terraform -chdir=${{ env.TF_WORKING_DIR }} output
