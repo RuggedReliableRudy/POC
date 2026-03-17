@@ -46,31 +46,14 @@ data "aws_security_group" "rds_sg" {
   id = "sg-06946642633980853"
 }
 
-# Existing subnets
-data "aws_subnet" "subnet_a" {
-  id = "subnet-05d9adf0cdf01bebf"
-}
-
-data "aws_subnet" "subnet_b" {
-  id = "subnet-0514c01e9c759511f"
+# Existing subnet group
+data "aws_db_subnet_group" "default_pg_subnets" {
+  name = "default-vpc-0dd754efc93268d77"
 }
 
 # Existing KMS key
 data "aws_kms_key" "kms" {
   key_id = "arn:aws-us-gov:kms:us-gov-west-1:018743596699:key/76639fe4-775e-474c-9fd3-afa872268b5c"
-}
-
-# ============================================================
-# SUBNET GROUP (REQUIRED BY RDS, BUT REFERENCES EXISTING SUBNETS)
-# ============================================================
-resource "aws_db_subnet_group" "pg_subnets" {
-  name       = "accumulator-pg-subnets"
-  subnet_ids = [
-    data.aws_subnet.subnet_a.id,
-    data.aws_subnet.subnet_b.id
-  ]
-
-  tags = local.common_tags
 }
 
 # ============================================================
@@ -89,7 +72,7 @@ resource "aws_db_instance" "node1" {
   port                    = 5430
 
   vpc_security_group_ids  = [data.aws_security_group.rds_sg.id]
-  db_subnet_group_name    = aws_db_subnet_group.pg_subnets.name
+  db_subnet_group_name    = data.aws_db_subnet_group.default_pg_subnets.name
   parameter_group_name    = data.aws_db_parameter_group.pg17.name
 
   storage_encrypted       = true
@@ -118,7 +101,7 @@ resource "aws_db_instance" "node2" {
   port                    = 5430
 
   vpc_security_group_ids  = [data.aws_security_group.rds_sg.id]
-  db_subnet_group_name    = aws_db_subnet_group.pg_subnets.name
+  db_subnet_group_name    = data.aws_db_subnet_group.default_pg_subnets.name
   parameter_group_name    = data.aws_db_parameter_group.pg17.name
 
   storage_encrypted       = true
