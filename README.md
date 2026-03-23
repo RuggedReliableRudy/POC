@@ -1,29 +1,47 @@
-cpe-stack/
-├─ terraform/
-│  ├─ main.tf
-│  ├─ variables.tf
-│  ├─ modules/
-│  │  ├─ rds/
-│  │  │  └─ main.tf
-│  │  └─ ec2/
-│  │     └─ main.tf
-├─ ansible/
-│  ├─ inventory.ini
-│  ├─ site.yml
-│  ├─ roles/
-│  │  ├─ java_app/
-│  │  │  └─ tasks/main.yml
-│  │  └─ db_active_active/
-│  │     └─ tasks/main.yml
-├─ .github/
-│  └─ workflows/
-│     └─ build-and-deploy.yml
-├─ build.gradle
-├─ settings.gradle
-├─ gradlew
-├─ gradlew.bat
-└─ gradle/
-   └─ wrapper/
-      ├─ gradle-wrapper.jar
-      └─ gradle-wrapper.properties
+project-infra/
+│
+├── global/
+│   ├── route53_global_lb/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── redis_global/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   └── kafka_global/   (MirrorMaker configs)
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
+│
+├── region-us-gov-east-1/
+│   ├── vpc/
+│   ├── ecs/
+│   ├── ecr/
+│   ├── kafka/
+│   ├── redis/
+│   ├── alb/
+│   └── main.tf
+│
+├── region-us-gov-west-1/
+│   ├── vpc/
+│   ├── ecs/
+│   ├── ecr/
+│   ├── kafka/
+│   ├── redis/
+│   ├── alb/
+│   └── main.tf
+│
+├── modules/
+│   ├── ecs/
+│   ├── ecr/
+│   ├── kafka/
+│   ├── redis/
+│   ├── redis_global/
+│   ├── route53_global_lb/
+│   └── alb/
+│
+└── .github/
+    └── workflows/
+        └── deploy-multi-region.yml
 
