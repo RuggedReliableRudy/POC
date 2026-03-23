@@ -130,3 +130,82 @@ Resources:
                   - ec2:DescribeVpcs
                   - ec2:DescribeSecurityGroups
                 Resource: "*"
+
+
+                # =========================================================
+        # ⭐ NEW: ECS + ECR Permissions for Deployments
+        # =========================================================
+        - PolicyName: github-actions-ecs-ecr-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+
+              # --- ECR: Push, Pull, Authenticate ---
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:CompleteLayerUpload
+                  - ecr:CreateRepository
+                  - ecr:DescribeRepositories
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: "*"
+
+              # --- ECS: Deploy, Update Services, Register Task Definitions ---
+              - Effect: Allow
+                Action:
+                  - ecs:CreateCluster
+                  - ecs:DescribeClusters
+                  - ecs:ListClusters
+                  - ecs:RegisterTaskDefinition
+                  - ecs:DescribeTaskDefinition
+                  - ecs:DeregisterTaskDefinition
+                  - ecs:UpdateService
+                  - ecs:CreateService
+                  - ecs:DescribeServices
+                  - ecs:ListServices
+                  - ecs:DeleteService
+                  - ecs:RunTask
+                  - ecs:StopTask
+                  - ecs:DescribeTasks
+                  - ecs:ListTasks
+                Resource: "*"
+
+              # --- IAM PassRole for ECS Task Execution Role ---
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: "arn:aws-us-gov:iam::${AWS::AccountId}:role/*"
+                Condition:
+                  StringLike:
+                    iam:PassedToService:
+                      - ecs.amazonaws.com
+                      - ecs-tasks.amazonaws.com
+
+              # --- VPC Networking for ECS Tasks ---
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                Resource: "*"
+
+              # --- Load Balancer Integration for ECS Services ---
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:DescribeTargetGroups
+                  - elasticloadbalancing:DescribeListeners
+                  - elasticloadbalancing:RegisterTargets
+                  - elasticloadbalancing:DeregisterTargets
+                  - elasticloadbalancing:ModifyTargetGroup
+                  - elasticloadbalancing:ModifyListener
+                Resource: "*"
+
