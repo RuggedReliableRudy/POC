@@ -80,16 +80,16 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image
+      - name: Build Docker image
+        env:
+          IMAGE_NAME: ${{ steps.get_ecr_uri.outputs.image_uri }}
         run: |
-          REPO="${APP_NAME}-${ENV}"
-          URI=$(aws ecr describe-repositories \
-            --repository-names "$REPO" \
-            --query 'repositories[0].repositoryUri' \
-            --output text)
+          docker buildx build \
+            --load \
+            -t $IMAGE_NAME \
+            -f docker/Dockerfile \
+            .
 
-          docker build -t $URI:${{ github.sha }} .
-          docker push $URI:${{ github.sha }}
 
       - name: Update ECS task definition
         run: |
