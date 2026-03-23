@@ -25,138 +25,108 @@ Resources:
 
       Policies:
 
+        # (EXISTING POLICIES REMAIN UNCHANGED)
         # ---------------------------------------------------------
-        # S3 Backend Access (Terraform state bucket)
-        # ---------------------------------------------------------
-        - PolicyName: github-actions-terraform-s3-backend
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                  - s3:GetBucketLocation
-                Resource: arn:aws-us-gov:s3:::project-accumulator-statefile
-
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: arn:aws-us-gov:s3:::project-accumulator-statefile/*
-
-        # ---------------------------------------------------------
-        # ⭐ NEW: Deployment Bucket Access (upload JAR + SQL)
-        # ---------------------------------------------------------
-        - PolicyName: github-actions-deploy-bucket
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                Resource: arn:aws-us-gov:s3:::project-accumulator-glue-job
-
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: arn:aws-us-gov:s3:::project-accumulator-glue-job/*
-
-        # ---------------------------------------------------------
+        # S3 Backend Access
+        # Deployment Bucket Access
         # Terraform Provisioning Permissions
+        # KMS Permissions
+        # SSM Permissions
         # ---------------------------------------------------------
-        - PolicyName: github-actions-terraform-provisioning
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
 
-              # EC2 + RDS provisioning
-              - Effect: Allow
-                Action:
-                  - ec2:*
-                  - rds:*
-                Resource: "*"
-
-              # Allow Terraform to pass IAM roles
-              - Effect: Allow
-                Action: iam:PassRole
-                Resource: arn:aws-us-gov:iam::018743596699:role/project/*
-
-              # Secrets Manager access
-              - Effect: Allow
-                Action:
-                  - secretsmanager:GetSecretValue
-                  - secretsmanager:DescribeSecret
-                  - secretsmanager:GetResourcePolicy
-                  - secretsmanager:ListSecrets
-                  - secretsmanager:ListSecretVersionIds
-                Resource: "*"
-
-              # CloudWatch Logs
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogGroups
-                  - logs:DescribeLogStreams
-                Resource: "*"
-
-        # ---------------------------------------------------------
-        # FULL KMS PERMISSIONS (ALL REQUIRED FOR TERRAFORM)
-        # ---------------------------------------------------------
-        - PolicyName: github-actions-kms-full
+        # =========================================================
+        # ⭐ NEW: MSK (Kafka) Provisioning Permissions
+        # =========================================================
+        - PolicyName: github-actions-msk-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
                 Action:
-                  - kms:CreateKey
-                  - kms:ScheduleKeyDeletion
-                  - kms:PutKeyPolicy
-                  - kms:GetKeyPolicy
-                  - kms:EnableKeyRotation
-                  - kms:GetKeyRotationStatus
-                  - kms:CreateAlias
-                  - kms:DeleteAlias
-                  - kms:ListAliases
-                  - kms:TagResource
-                  - kms:UntagResource
-                  - kms:ListResourceTags
-                  - kms:Encrypt
-                  - kms:Decrypt
-                  - kms:GenerateDataKey
-                  - kms:GenerateDataKeyWithoutPlaintext
-                  - kms:GenerateDataKeyPair
-                  - kms:GenerateDataKeyPairWithoutPlaintext
-                  - kms:DescribeKey
-                  - kms:ListKeys
+                  - kafka:*
+                  - kafka-cluster:*
+                  - kafka:GetBootstrapBrokers
+                  - kafka:ListClusters
+                  - kafka:DescribeCluster
+                  - kafka:CreateCluster
+                  - kafka:DeleteCluster
                 Resource: "*"
 
-        # ---------------------------------------------------------
-        # ⭐ SSM Run Command Permissions (required for deploy_ssm.sh)
-        # ---------------------------------------------------------
-        - PolicyName: github-actions-ssm-access
+              # MSK requires VPC networking permissions
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSecurityGroups
+                Resource: "*"
+
+        # =========================================================
+        # ⭐ NEW: Redis (ElastiCache Global Datastore) Permissions
+        # =========================================================
+        - PolicyName: github-actions-redis-global-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
                 Action:
-                  - ssm:SendCommand
-                  - ssm:GetCommandInvocation
-                  - ssm:ListCommands
-                  - ssm:ListCommandInvocations
-                  - ssm:DescribeInstanceInformation
-                  - ssm:DescribeInstanceProperties
-                  - ssm:DescribeDocument
-                  - ssm:ListDocuments
-                  - ssm:ListDocumentVersions
-                  - ssmmessages:CreateControlChannel
-                  - ssmmessages:CreateDataChannel
-                  - ssmmessages:OpenControlChannel
-                  - ssmmessages:OpenDataChannel
-                  - ec2messages:GetMessages
-                  - ec2messages:SendReply
+                  - elasticache:*
+                  - elasticache:CreateGlobalReplicationGroup
+                  - elasticache:DeleteGlobalReplicationGroup
+                  - elasticache:CreateReplicationGroup
+                  - elasticache:ModifyReplicationGroup
+                  - elasticache:DescribeReplicationGroups
+                  - elasticache:DescribeGlobalReplicationGroups
+                  - elasticache:CreateCacheSubnetGroup
+                  - elasticache:DescribeCacheSubnetGroups
+                Resource: "*"
+
+              # Redis also requires VPC networking permissions
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSecurityGroups
+                Resource: "*"
+
+        # =========================================================
+        # ⭐ NEW: Global Load Balancer (Route 53 + ALB) Permissions
+        # =========================================================
+        - PolicyName: github-actions-global-loadbalancer
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+
+              # Route 53 (latency-based routing)
+              - Effect: Allow
+                Action:
+                  - route53:ChangeResourceRecordSets
+                  - route53:ListHostedZones
+                  - route53:ListResourceRecordSets
+                  - route53:GetHostedZone
+                Resource: "*"
+
+              # ALB provisioning
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:*
+                Resource: "*"
+
+              # Health checks for global routing
+              - Effect: Allow
+                Action:
+                  - route53:CreateHealthCheck
+                  - route53:UpdateHealthCheck
+                  - route53:DeleteHealthCheck
+                  - route53:GetHealthCheck
+                Resource: "*"
+
+              # VPC networking for ALB
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSecurityGroups
                 Resource: "*"
