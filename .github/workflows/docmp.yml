@@ -39,6 +39,12 @@ jobs:
 
       - name: Update ECS task definition
         run: |
+          REPO="${APP_NAME}-${ENV}"
+          URI=$(aws ecr describe-repositories \
+            --repository-names "$REPO" \
+            --query 'repositories[0].repositoryUri' \
+            --output text)
+
           FAMILY="${APP_NAME}-${ENV}"
           TASK=$(aws ecs describe-task-definition --task-definition "$FAMILY")
           NEW=$(echo "$TASK" \
@@ -87,6 +93,12 @@ jobs:
 
       - name: Update ECS task definition
         run: |
+          REPO="${APP_NAME}-${ENV}"
+          URI=$(aws ecr describe-repositories \
+            --repository-names "$REPO" \
+            --query 'repositories[0].repositoryUri' \
+            --output text)
+
           FAMILY="${APP_NAME}-${ENV}"
           TASK=$(aws ecs describe-task-definition --task-definition "$FAMILY")
           NEW=$(echo "$TASK" \
