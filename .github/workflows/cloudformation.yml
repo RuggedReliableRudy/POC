@@ -25,17 +25,70 @@ Resources:
 
       Policies:
 
-        # (EXISTING POLICIES REMAIN UNCHANGED)
-        # ---------------------------------------------------------
-        # S3 Backend Access
-        # Deployment Bucket Access
-        # Terraform Provisioning Permissions
-        # KMS Permissions
-        # SSM Permissions
-        # ---------------------------------------------------------
+        # =========================================================
+        # ⭐ S3 Backend + Deployment Bucket Access
+        # =========================================================
+        - PolicyName: github-actions-s3-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: "*"
 
         # =========================================================
-        # ⭐ NEW: MSK (Kafka) Provisioning Permissions
+        # ⭐ Terraform Provisioning Permissions
+        # =========================================================
+        - PolicyName: github-actions-terraform-provisioning
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:*
+                  - iam:*
+                  - kms:*
+                  - logs:*
+                  - autoscaling:*
+                  - cloudwatch:*
+                Resource: "*"
+
+        # =========================================================
+        # ⭐ KMS Permissions
+        # =========================================================
+        - PolicyName: github-actions-kms-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                  - kms:DescribeKey
+                Resource: "*"
+
+        # =========================================================
+        # ⭐ SSM Permissions
+        # =========================================================
+        - PolicyName: github-actions-ssm-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:GetParameterHistory
+                  - ssm:PutParameter
+                Resource: "*"
+
+        # =========================================================
+        # ⭐ MSK (Kafka) Provisioning Permissions
         # =========================================================
         - PolicyName: github-actions-msk-access
           PolicyDocument:
@@ -52,7 +105,6 @@ Resources:
                   - kafka:DeleteCluster
                 Resource: "*"
 
-              # MSK requires VPC networking permissions
               - Effect: Allow
                 Action:
                   - ec2:CreateNetworkInterface
@@ -64,7 +116,7 @@ Resources:
                 Resource: "*"
 
         # =========================================================
-        # ⭐ NEW: Redis (ElastiCache Global Datastore) Permissions
+        # ⭐ Redis (ElastiCache Global Datastore) Permissions
         # =========================================================
         - PolicyName: github-actions-redis-global-access
           PolicyDocument:
@@ -83,7 +135,6 @@ Resources:
                   - elasticache:DescribeCacheSubnetGroups
                 Resource: "*"
 
-              # Redis also requires VPC networking permissions
               - Effect: Allow
                 Action:
                   - ec2:DescribeSubnets
@@ -92,14 +143,12 @@ Resources:
                 Resource: "*"
 
         # =========================================================
-        # ⭐ NEW: Global Load Balancer (Route 53 + ALB) Permissions
+        # ⭐ Global Load Balancer (Route 53 + ALB) Permissions
         # =========================================================
         - PolicyName: github-actions-global-loadbalancer
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-
-              # Route 53 (latency-based routing)
               - Effect: Allow
                 Action:
                   - route53:ChangeResourceRecordSets
@@ -108,13 +157,11 @@ Resources:
                   - route53:GetHostedZone
                 Resource: "*"
 
-              # ALB provisioning
               - Effect: Allow
                 Action:
                   - elasticloadbalancing:*
                 Resource: "*"
 
-              # Health checks for global routing
               - Effect: Allow
                 Action:
                   - route53:CreateHealthCheck
@@ -123,7 +170,6 @@ Resources:
                   - route53:GetHealthCheck
                 Resource: "*"
 
-              # VPC networking for ALB
               - Effect: Allow
                 Action:
                   - ec2:DescribeSubnets
@@ -131,9 +177,8 @@ Resources:
                   - ec2:DescribeSecurityGroups
                 Resource: "*"
 
-
-                # =========================================================
-        # ⭐ NEW: ECS + ECR Permissions for Deployments
+        # =========================================================
+        # ⭐ ECS + ECR Permissions for Deployments
         # =========================================================
         - PolicyName: github-actions-ecs-ecr-access
           PolicyDocument:
@@ -208,4 +253,3 @@ Resources:
                   - elasticloadbalancing:ModifyTargetGroup
                   - elasticloadbalancing:ModifyListener
                 Resource: "*"
-
