@@ -7,8 +7,6 @@ terraform {
   }
 }
 
-# No default provider; module uses aliased east/west internally
-
 variable "app_name" {}
 variable "env" {}
 

@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 provider "aws" {
   region = "us-gov-west-1"
 }
@@ -48,12 +57,12 @@ module "redis" {
 }
 
 module "alb" {
-  source       = "../modules/alb"
-  app_name     = var.app_name
-  env          = var.env
-  vpc_id       = local.vpc_id
-  subnet_ids   = local.private_subnet_ids
-  sg_ids       = local.security_group_ids
+  source        = "../modules/alb"
+  app_name      = var.app_name
+  env           = var.env
+  vpc_id        = local.vpc_id
+  subnet_ids    = local.private_subnet_ids
+  sg_ids        = local.security_group_ids
   listener_port = 80
 }
 
@@ -77,4 +86,20 @@ module "ecs" {
   kafka_bootstrap_servers = module.kafka.bootstrap_brokers
 
   alb_target_group_arn = module.alb.target_group_arn
+}
+
+output "alb_dns_name" {
+  value = module.alb.alb_dns_name
+}
+
+output "alb_zone_id" {
+  value = module.alb.alb_zone_id
+}
+
+output "kafka_bootstrap_brokers" {
+  value = module.kafka.bootstrap_brokers
+}
+
+output "redis_endpoint" {
+  value = module.redis.endpoint
 }

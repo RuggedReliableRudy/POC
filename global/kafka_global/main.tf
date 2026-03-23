@@ -14,17 +14,8 @@ provider "aws" {
 variable "app_name" {}
 variable "env" {}
 
-# Assume regional MSK clusters already created
 variable "east_bootstrap_brokers" {}
 variable "west_bootstrap_brokers" {}
 
-module "kafka_global" {
-  source = "../../modules/kafka" # or dedicated kafka_global module
-
-  app_name  = var.app_name
-  env       = var.env
-
-  # You’d use these to configure MirrorMaker 2 ECS task
-  east_bootstrap_brokers = var.east_bootstrap_brokers
-  west_bootstrap_brokers = var.west_bootstrap_brokers
-}
+# Here you’d define an ECS service or EC2 instance running MirrorMaker 2
+# using east_bootstrap_brokers and west_bootstrap_brokers.
