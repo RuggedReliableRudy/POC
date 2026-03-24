@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: GitHub Actions IAM Role for Terraform provisioning + SSM deployments
+Description: GitHub Actions IAM Role for Terraform provisioning
 
 Resources:
 
@@ -26,69 +26,127 @@ Resources:
       Policies:
 
         # =========================================================
-        # ⭐ S3 Backend + Deployment Bucket Access
+        # S3 Backend Access
         # =========================================================
-        - PolicyName: github-actions-s3-access
+        - PolicyName: github-actions-terraform-s3-backend
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
                 Action:
                   - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource: arn:aws-us-gov:s3:::project-accumulator-statefile
+
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:DeleteObject
-                Resource: "*"
+                Resource: arn:aws-us-gov:s3:::project-accumulator-statefile/*
 
         # =========================================================
-        # ⭐ Terraform Provisioning Permissions
+        # Deployment Bucket Access
+        # =========================================================
+        - PolicyName: github-actions-deploy-bucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: arn:aws-us-gov:s3:::project-accumulator-glue-job
+
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: arn:aws-us-gov:s3:::project-accumulator-glue-job/*
+
+        # =========================================================
+        # Terraform Provisioning Permissions
         # =========================================================
         - PolicyName: github-actions-terraform-provisioning
           PolicyDocument:
             Version: 2012-10-17
             Statement:
+
+              # EC2 + RDS provisioning
               - Effect: Allow
                 Action:
                   - ec2:*
-                  - iam:*
-                  - kms:*
-                  - logs:*
-                  - autoscaling:*
-                  - cloudwatch:*
+                  - rds:*
                 Resource: "*"
 
-        # =========================================================
-        # ⭐ KMS Permissions
-        # =========================================================
-        - PolicyName: github-actions-kms-access
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
+              # IAM PassRole
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: arn:aws-us-gov:iam::018743596699:role/project/*
+
+              # KMS permissions
               - Effect: Allow
                 Action:
+                  - kms:CreateKey
+                  - kms:ScheduleKeyDeletion
+                  - kms:PutKeyPolicy
+                  - kms:GetKeyPolicy
+                  - kms:EnableKeyRotation
+                  - kms:GetKeyRotationStatus
+                  - kms:CreateAlias
+                  - kms:DeleteAlias
+                  - kms:ListAliases
+                  - kms:TagResource
+                  - kms:UntagResource
+                  - kms:ListResourceTags
                   - kms:Encrypt
                   - kms:Decrypt
                   - kms:GenerateDataKey
+                  - kms:GenerateDataKeyWithoutPlaintext
+                  - kms:GenerateDataKeyPair
+                  - kms:GenerateDataKeyPairWithoutPlaintext
                   - kms:DescribeKey
+                  - kms:ListKeys
                 Resource: "*"
 
-        # =========================================================
-        # ⭐ SSM Permissions
-        # =========================================================
-        - PolicyName: github-actions-ssm-access
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
+              # SSM permissions
               - Effect: Allow
                 Action:
-                  - ssm:GetParameter
-                  - ssm:GetParameters
-                  - ssm:GetParameterHistory
-                  - ssm:PutParameter
+                  - ssm:StartSession
+                  - ssm:DescribeSessions
+                  - ssm:TerminateSession
+                  - ssm:SendCommand
+                  - ssm:GetCommandInvocation
+                  - ssm:DescribeInstanceInformation
+                  - ssmmessages:CreateControlChannel
+                  - ssmmessages:CreateDataChannel
+                  - ssmmessages:OpenControlChannel
+                  - ssmmessages:OpenDataChannel
+                  - ec2messages:GetMessages
+                  - ec2messages:SendReply
+                Resource: "*"
+
+              # Secrets Manager
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:GetResourcePolicy
+                  - secretsmanager:ListSecrets
+                  - secretsmanager:ListSecretVersionIds
+                Resource: "*"
+
+              # CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
                 Resource: "*"
 
         # =========================================================
-        # ⭐ MSK (Kafka) Provisioning Permissions
+        # MSK (Kafka) Permissions
         # =========================================================
         - PolicyName: github-actions-msk-access
           PolicyDocument:
@@ -116,7 +174,7 @@ Resources:
                 Resource: "*"
 
         # =========================================================
-        # ⭐ Redis (ElastiCache Global Datastore) Permissions
+        # Redis (ElastiCache Global Datastore)
         # =========================================================
         - PolicyName: github-actions-redis-global-access
           PolicyDocument:
@@ -143,7 +201,7 @@ Resources:
                 Resource: "*"
 
         # =========================================================
-        # ⭐ Global Load Balancer (Route 53 + ALB) Permissions
+        # Global Load Balancer (Route 53 + ALB)
         # =========================================================
         - PolicyName: github-actions-global-loadbalancer
           PolicyDocument:
@@ -158,8 +216,7 @@ Resources:
                 Resource: "*"
 
               - Effect: Allow
-                Action:
-                  - elasticloadbalancing:*
+                Action: elasticloadbalancing:*
                 Resource: "*"
 
               - Effect: Allow
@@ -178,14 +235,14 @@ Resources:
                 Resource: "*"
 
         # =========================================================
-        # ⭐ ECS + ECR Permissions for Deployments
+        # ECS + ECR Permissions for Deployments
         # =========================================================
         - PolicyName: github-actions-ecs-ecr-access
           PolicyDocument:
             Version: 2012-10-17
             Statement:
 
-              # --- ECR: Push, Pull, Authenticate ---
+              # ECR
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
@@ -200,7 +257,7 @@ Resources:
                   - ecr:UploadLayerPart
                 Resource: "*"
 
-              # --- ECS: Deploy, Update Services, Register Task Definitions ---
+              # ECS
               - Effect: Allow
                 Action:
                   - ecs:CreateCluster
@@ -220,10 +277,9 @@ Resources:
                   - ecs:ListTasks
                 Resource: "*"
 
-              # --- IAM PassRole for ECS Task Execution Role ---
+              # IAM PassRole
               - Effect: Allow
-                Action:
-                  - iam:PassRole
+                Action: iam:PassRole
                 Resource: "arn:aws-us-gov:iam::${AWS::AccountId}:role/*"
                 Condition:
                   StringLike:
@@ -231,7 +287,7 @@ Resources:
                       - ecs.amazonaws.com
                       - ecs-tasks.amazonaws.com
 
-              # --- VPC Networking for ECS Tasks ---
+              # VPC Networking
               - Effect: Allow
                 Action:
                   - ec2:DescribeSubnets
@@ -242,7 +298,7 @@ Resources:
                   - ec2:DeleteNetworkInterface
                 Resource: "*"
 
-              # --- Load Balancer Integration for ECS Services ---
+              # Load Balancer Integration
               - Effect: Allow
                 Action:
                   - elasticloadbalancing:DescribeLoadBalancers
