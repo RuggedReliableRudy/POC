@@ -60,13 +60,22 @@ jobs:
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
       # ----------------------------------------------------
-      # Set ECR URI
+      # Set ECR URI (THIS FIXES YOUR ERROR)
       # ----------------------------------------------------
       - name: Set ECR URI
         run: |
           echo "ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}" >> $GITHUB_ENV
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_GOVCLOUD_ACCOUNT_ID }}
+
+      # ----------------------------------------------------
+      # Debug values (helps confirm correctness)
+      # ----------------------------------------------------
+      - name: Debug ECR values
+        run: |
+          echo "IMAGE_NAME=${IMAGE_NAME}"
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          echo "ECR_URI=${ECR_URI}"
 
       # ----------------------------------------------------
       # Tag image
