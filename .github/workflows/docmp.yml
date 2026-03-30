@@ -1,117 +1,102 @@
-name: Multi-Region ECS Deployment
+name: Deploy Accumulator App
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "Accumulator-dev" ]
 
-env:
-  APP_NAME: accumulator-load
-  ENV: dev
+permissions:
+  contents: read
 
 jobs:
-  deploy-east:
+  terraform:
     runs-on: ubuntu-latest
+
     env:
-      AWS_REGION: us-gov-east-1
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build Docker image
-        env:
-          IMAGE_NAME: ${{ steps.get_ecr_uri.outputs.image_uri }}
-        run: |
-          docker buildx build \
-            --load \
-            -t $IMAGE_NAME \
-            -f docker/Dockerfile \
-            .
-
-
-      - name: Update ECS task definition
-        run: |
-          REPO="${APP_NAME}-${ENV}"
-          URI=$(aws ecr describe-repositories \
-            --repository-names "$REPO" \
-            --query 'repositories[0].repositoryUri' \
-            --output text)
-
-          FAMILY="${APP_NAME}-${ENV}"
-          TASK=$(aws ecs describe-task-definition --task-definition "$FAMILY")
-          NEW=$(echo "$TASK" \
-            | jq --arg IMG "$URI:${{ github.sha }}" \
-              '.taskDefinition
-              | .containerDefinitions[0].image = $IMG
-              | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities)')
-          echo "$NEW" > new.json
-          ARN=$(aws ecs register-task-definition \
-            --cli-input-json file://new.json \
-            --query 'taskDefinition.taskDefinitionArn' --output text)
-
-          aws ecs update-service \
-            --cluster "${APP_NAME}-${ENV}-cluster" \
-            --service "${APP_NAME}-${ENV}-svc" \
-            --task-definition "$ARN"
-
-  deploy-west:
-    needs: deploy-east
-    runs-on: ubuntu-latest
-    env:
+      IMAGE_NAME: cpeload
       AWS_REGION: us-gov-west-1
 
-    steps:
-      - uses: actions/checkout@v4
+    permissions:
+      id-token: write
+      contents: read
+      actions: write
 
-      - name: Configure AWS credentials
+    steps:
+      # ----------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------
+      # Configure AWS Credentials (OIDC)
+      # ----------------------------------------------------
+      - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+          output-env-credentials: true
 
+      # ----------------------------------------------------
+      # Login to ECR
+      # ----------------------------------------------------
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      # ----------------------------------------------------
+      # Build Docker image
+      # ----------------------------------------------------
       - name: Build Docker image
+        run: docker build -t $IMAGE_NAME:latest -f docker/Dockerfile docker/
+
+      # ----------------------------------------------------
+      # Determine image tag
+      # ----------------------------------------------------
+      - name: Determine image tag
+        id: tag
+        run: |
+          TAG="${GITHUB_SHA}"
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+
+      # ----------------------------------------------------
+      # Set ECR URI
+      # ----------------------------------------------------
+      - name: Set ECR URI
+        run: |
+          echo "ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}" >> $GITHUB_ENV
         env:
-          IMAGE_NAME: ${{ steps.get_ecr_uri.outputs.image_uri }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_GOVCLOUD_ACCOUNT_ID }}
+
+      # ----------------------------------------------------
+      # Tag image
+      # ----------------------------------------------------
+      - name: Tag image
+        run: docker tag $IMAGE_NAME:latest ${ECR_URI}:${IMAGE_TAG}
+
+      # ----------------------------------------------------
+      # Push image to ECR
+      # ----------------------------------------------------
+      - name: Push image to ECR
+        run: docker push ${ECR_URI}:${IMAGE_TAG}
+
+      # ----------------------------------------------------
+      # Setup Terraform
+      # ----------------------------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
         run: |
-          docker buildx build \
-            --load \
-            -t $IMAGE_NAME \
-            -f docker/Dockerfile \
-            .
+          terraform plan \
+            -var="ecr_uri=${ECR_URI}" \
+            -var="image_tag=${IMAGE_TAG}"
 
-
-      - name: Update ECS task definition
+      - name: Terraform Apply
         run: |
-          REPO="${APP_NAME}-${ENV}"
-          URI=$(aws ecr describe-repositories \
-            --repository-names "$REPO" \
-            --query 'repositories[0].repositoryUri' \
-            --output text)
-
-          FAMILY="${APP_NAME}-${ENV}"
-          TASK=$(aws ecs describe-task-definition --task-definition "$FAMILY")
-          NEW=$(echo "$TASK" \
-            | jq --arg IMG "$URI:${{ github.sha }}" \
-              '.taskDefinition
-              | .containerDefinitions[0].image = $IMG
-              | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities)')
-          echo "$NEW" > new.json
-          ARN=$(aws ecs register-task-definition \
-            --cli-input-json file://new.json \
-            --query 'taskDefinition.taskDefinitionArn' --output text)
-
-          aws ecs update-service \
-            --cluster "${APP_NAME}-${ENV}-cluster" \
-            --service "${APP_NAME}-${ENV}-svc" \
-            --task-definition "$ARN"
+          terraform apply -auto-approve \
+            -var="ecr_uri=${ECR_URI}" \
+            -var="image_tag=${IMAGE_TAG}"
