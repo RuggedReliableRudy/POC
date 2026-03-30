@@ -21,15 +21,9 @@ jobs:
       actions: write
 
     steps:
-      # ----------------------------------------------------
-      # Checkout
-      # ----------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ----------------------------------------------------
-      # Configure AWS Credentials (OIDC)
-      # ----------------------------------------------------
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -38,60 +32,33 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      # ----------------------------------------------------
-      # Login to ECR
-      # ----------------------------------------------------
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # ----------------------------------------------------
-      # Build Docker image
-      # ----------------------------------------------------
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:latest -f docker/Dockerfile docker/
 
-      # ----------------------------------------------------
-      # Determine image tag
-      # ----------------------------------------------------
       - name: Determine image tag
-        id: tag
-        run: |
-          TAG="${GITHUB_SHA}"
-          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
-      # ----------------------------------------------------
-      # Set ECR URI
-      # ----------------------------------------------------
       - name: Set ECR URI
         run: |
+          echo "AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}"
           echo "ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}" >> $GITHUB_ENV
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_GOVCLOUD_ACCOUNT_ID }}
 
-      # ----------------------------------------------------
-      # Debug values
-      # ----------------------------------------------------
-      - name: Debug ECR values
+      - name: Debug ECR URI
         run: |
-          echo "IMAGE_NAME=${IMAGE_NAME}"
-          echo "IMAGE_TAG=${IMAGE_TAG}"
           echo "ECR_URI=${ECR_URI}"
+          echo "IMAGE_TAG=${IMAGE_TAG}"
 
-      # ----------------------------------------------------
-      # Tag image
-      # ----------------------------------------------------
       - name: Tag image
         run: docker tag $IMAGE_NAME:latest ${ECR_URI}:${IMAGE_TAG}
 
-      # ----------------------------------------------------
-      # Push image to ECR
-      # ----------------------------------------------------
       - name: Push image to ECR
         run: docker push ${ECR_URI}:${IMAGE_TAG}
 
-      # ----------------------------------------------------
-      # Setup Terraform
-      # ----------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -99,13 +66,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: |
-          terraform plan \
-            -var="ecr_uri=${ECR_URI}" \
-            -var="image_tag=${IMAGE_TAG}"
+        run: terraform plan -var="ecr_uri=${ECR_URI}" -var="image_tag=${IMAGE_TAG}"
 
       - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="ecr_uri=${ECR_URI}" \
-            -var="image_tag=${IMAGE_TAG}"
+        run: terraform apply -auto-approve -var="ecr_uri=${ECR_URI}" -var="image_tag=${IMAGE_TAG}"
