@@ -52,9 +52,7 @@ project-infra/
 
 
 
-Here’s a clear mental “diagram” you can hand to Gill or an architect—described in layers so it’s easy to translate into Visio, Draw.io, or an AWS diagram.
 
----
 
 ### 1. Region and VPC
 
@@ -198,13 +196,7 @@ Annotate:
 
 ---
 
-### One‑line summary you can attach to the diagram
-
-> “Private‑only VPC in us-gov-east-1 with ECS, internal ALB, Redis, and Kafka in private subnets; egress via NAT or VPC endpoints only; peered to us-gov-west-1 VPC; no public subnets, no public ALBs, GovCloud‑compliant.”
-
----
-
-If you’d like, I can turn this into a **bullet‑perfect description** you can paste into a change ticket as “Proposed Network Architecture,” or I can help you define **exact CIDR blocks** for each subnet.
+#
 
 
 
@@ -219,20 +211,7 @@ If you’d like, I can turn this into a **bullet‑perfect description** you can
 
 
 
-Got it, Emmanuel — if **us‑gov‑east‑1 has *no public subnets***, then the request to Gill needs to reflect a **fully private, GovCloud‑compliant network architecture**.  
-Here’s an updated, clean, professional message you can forward — with **no references to public subnets**, and with the correct requirements for a **private‑only VPC**, which is common in GovCloud deployments.
 
----
-
-# 📧 **Updated Email to Gill (No Public Subnets Required)**
-
-Below is the revised version you can send:
-
----
-
-**Subject:** Request for VPC, Networking, and Permissions Setup in us-gov-east-1
-
-Hi Gill,
 
 I hope you're doing well. I’m reaching out because we need to open a change request for foundational infrastructure setup in **us-gov-east-1**. At the moment, there are no resources deployed in that region, and our multi‑region architecture requires parity with the existing us‑gov‑west‑1 environment.
 
@@ -356,13 +335,3 @@ Please let me know if you need CIDR proposals, architecture diagrams, or any add
 Thanks,  
 Emmanuel
 
----
-
-If you want, I can also generate:
-
-- A **CIDR plan**  
-- A **network diagram**  
-- A **GovCloud‑compliant private‑only architecture diagram**  
-- A **Terraform module checklist**  
-
-Just tell me what you want to include.
