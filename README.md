@@ -332,6 +332,41 @@ We need the following IAM roles created or validated:
 
 Please let me know if you need CIDR proposals, architecture diagrams, or any additional details for the ticket.
 
+
+
+6. Global Load Balancer Integration
+We are using a Route53 Global Load Balancer (Global Traffic Flow) to distribute traffic between regions.
+
+Requirements for us‑gov‑east‑1:
+
+Deploy an internal ALB in private subnets
+
+Register ECS services as ALB targets
+
+Configure health checks for the ALB
+
+Route53 Global Traffic Flow will:
+
+Monitor ALB health in east and west
+
+Fail over between regions automatically
+
+Route traffic to the healthy region
+
+No public ALB is required in east
+
+No public subnets are required in east
+
+This ensures:
+
+Global failover
+
+Multi‑region resilience
+
+Zero public exposure in east
+
+Full compliance with GovCloud restrictions
+
 Thanks,  
 Emmanuel
 
