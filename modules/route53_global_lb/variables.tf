@@ -1,0 +1,6 @@
+variable "domain_name"    { type = string }
+variable "hosted_zone_id" { type = string }
+variable "east_alb_dns"   { type = string }
+variable "east_alb_zone"  { type = string }
+variable "west_alb_dns"   { type = string }
+variable "west_alb_zone"  { type = string }
