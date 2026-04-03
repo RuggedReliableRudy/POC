@@ -1,84 +1,123 @@
-name: Deploy CpeLoad Infrastructure
+name: Deploy Multi-Region Infra
 
 on:
-  workflow_dispatch:
-    inputs:
-      image_tag:
-        description: "Optional: override image tag (SHA). Leave empty to deploy latest."
-        required: false
-        type: string
+  push:
+    branches: [ "Accumulator-dev" ]
 
-env:
-  AWS_REGION: us-gov-west-1
-  IMAGE_NAME: cpeload-app
+permissions:
+  contents: read
 
 jobs:
-  deploy:
+  deploy-west:
     runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: cpeload
+      AWS_REGION: us-gov-west-1
 
     permissions:
       id-token: write
       contents: read
+      actions: write
 
     steps:
-      - name: Checkout source code
+      # ----------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+      # # ----------------------------------------------------
+      # # Build Gradle Application
+      # # ----------------------------------------------------
+      # - name: Build JAR
+      #   working-directory: Cpeload
+      #   run: |
+      #     chmod +x ./gradlew
+      #     ./gradlew clean build
 
+      # # ----------------------------------------------------
+      # # Configure AWS Credentials
+      # # ----------------------------------------------------
+      # - name: Configure AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ secrets.AWS_GOVCLOUD_ROLE_ARN }}
+      #     aws-region: ${{ env.AWS_REGION }}
+      #     audience: sts.amazonaws.com
+      #     output-env-credentials: true
+
+      # # ----------------------------------------------------
+      # # Login to ECR
+      # # ----------------------------------------------------
+      # - name: Login to ECR
+      #   uses: aws-actions/amazon-ecr-login@v2
+
+      # # ----------------------------------------------------
+      # # Build Docker image
+      # # ----------------------------------------------------
+      # - name: Build Docker image
+      #   run: docker build -t $IMAGE_NAME:latest -f Docker/Dockerfile Docker/
+
+      # # ----------------------------------------------------
+      # # Determine image tag
+      # # ----------------------------------------------------
+      # - name: Determine image tag
+      #   run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+
+      # # ----------------------------------------------------
+      # # Set ECR URI (fixes your missing account ID issue)
+      # # ----------------------------------------------------
+      # - name: Set ECR URI
+      #   run: |
+      #     echo "AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}"
+      #     echo "ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}" >> $GITHUB_ENV
+      #   env:
+      #     AWS_ACCOUNT_ID: ${{ secrets.AWS_GOVCLOUD_ACCOUNT_ID }}
+
+      # # ----------------------------------------------------
+      # # Debug ECR URI
+      # # ----------------------------------------------------
+      # - name: Debug ECR URI
+      #   run: |
+      #     echo "ECR_URI=${ECR_URI}"
+      #     echo "IMAGE_TAG=${IMAGE_TAG}"
+
+      # # ----------------------------------------------------
+      # # Tag image
+      # # ----------------------------------------------------
+      # - name: Tag image
+      #   run: docker tag $IMAGE_NAME:latest ${ECR_URI}:${IMAGE_TAG}
+
+      # # ----------------------------------------------------
+      # # Push image
+      # # ----------------------------------------------------
+      # - name: Push image
+      #   run: docker push ${ECR_URI}:${IMAGE_TAG}
+
+      # ----------------------------------------------------
+      # Setup Terraform
+      # ----------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       # ----------------------------------------------------
-      # Fetch ECR URI
-      # ----------------------------------------------------
-      - name: Fetch ECR URI
-        run: |
-          URI=$(aws ecr describe-repositories \
-            --repository-names ${{ env.IMAGE_NAME }} \
-            --query "repositories[0].repositoryUri" \
-            --output text)
-          echo "ECR_URI=$URI" >> $GITHUB_ENV
-          echo "Using ECR URI: $URI"
-
-      # ----------------------------------------------------
-      # Determine which tag to deploy
-      # ----------------------------------------------------
-      - name: Determine image tag
-        run: |
-          if [ -z "${{ github.event.inputs.image_tag }}" ]; then
-            TAG=$(aws ecr describe-images \
-              --repository-name ${{ env.IMAGE_NAME }} \
-              --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
-              --output text)
-            echo "Using latest tag: $TAG"
-          else
-            TAG="${{ github.event.inputs.image_tag }}"
-            echo "Using provided tag: $TAG"
-          fi
-          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
-
-      # ----------------------------------------------------
-      # Terraform Deploy
+      # Terraform Init
       # ----------------------------------------------------
       - name: Terraform Init
+        working-directory: region-us-gov-west-1
         run: terraform init
 
-      - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="ecr_uri=${ECR_URI}" \
-            -var="image_tag=${IMAGE_TAG}"
+      # ----------------------------------------------------
+      # Terraform Plan
+      # ----------------------------------------------------
+      - name: Terraform Plan
+        working-directory: region-us-gov-west-1
+        run: terraform plan
 
       # ----------------------------------------------------
-      # Run DB Migration AFTER DB is deployed
+      # Terraform Apply
       # ----------------------------------------------------
-      - name: Run DB Migration (docmp_tables2)
-        run: |
-          echo "Running docmp_tables2.sql..."
-          psql "host=${{ secrets.DB_HOST }} port=5430 user=${{ secrets.DB_USER }} password=${{ secrets.DB_PASSWORD }} dbname=${{ secrets.DB_NAME }}" \
-            -f ./sql/docmp_tables2.sql
+      - name: Terraform Apply
+        working-directory: project-infra/region-us-gov-west-1
+        run: terraform apply -auto-approve
