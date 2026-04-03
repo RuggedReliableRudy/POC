@@ -1,0 +1,5 @@
+aws_region = "us-gov-west-1"
+app_name   = "accumulator-load"
+env        = "dev"
+ecr_uri    = "REPLACE_WITH_YOUR_ECR_URI"
+image_tag  = "latest"
